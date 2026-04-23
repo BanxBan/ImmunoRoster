@@ -4,10 +4,10 @@
       "runtime": "nodejs20.x"
     }
   },
-  "crons": [
+  "rewrites": [
     {
-      "path": "/api/cron/daily-reminders",
-      "schedule": "0 0 * * *"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     }
   ]
 }

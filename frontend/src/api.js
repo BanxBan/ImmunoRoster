@@ -58,6 +58,7 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     let message = "Request failed";
+    console.error(`API Error [${response.status}] at ${API_BASE_URL}${path}`);
     try {
       const data = await response.json();
       message = data.error || message;
@@ -83,6 +84,7 @@ export async function adminLogin({ identifier, password }) {
 
   if (!response.ok) {
     let message = "Login failed";
+    console.error(`Login Error [${response.status}] at ${API_BASE_URL}/api/auth/admin-login`);
     try {
       const data = await response.json();
       message = data.error || message;
