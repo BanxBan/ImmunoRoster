@@ -3,6 +3,8 @@ import {
   adminLogin,
   adminLogout,
   createPatient,
+  updatePatient,
+  deletePatient,
   getAdminSession,
   searchPatients
 } from "./api";
@@ -29,6 +31,7 @@ export default function App() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [patients, setPatients] = useState([]);
   const [patientForm, setPatientForm] = useState(initialPatientForm);
+  const [editingPatientId, setEditingPatientId] = useState(null);
   const [filterForm, setFilterForm] = useState(initialFilterForm);
   const [savingPatient, setSavingPatient] = useState(false);
   const [error, setError] = useState("");
@@ -64,19 +67,48 @@ export default function App() {
     }
   }
 
-  async function onCreatePatient(event) {
+  async function onSavePatient(event) {
     event.preventDefault();
     setSavingPatient(true);
     setError("");
 
     try {
-      await createPatient(patientForm);
+      if (editingPatientId) {
+        await updatePatient(editingPatientId, patientForm);
+      } else {
+        await createPatient(patientForm);
+      }
       setPatientForm(initialPatientForm);
+      setEditingPatientId(null);
       await loadData();
     } catch (err) {
       setError(err.message);
     } finally {
       setSavingPatient(false);
+    }
+  }
+
+  function onEditPatient(patient) {
+    setEditingPatientId(patient.id);
+    setPatientForm({
+      full_name: patient.full_name || "",
+      date_of_birth: patient.date_of_birth || "",
+      sex: patient.sex || "",
+      contact_number: patient.contact_number || "",
+      barangay: patient.barangay || "",
+      municipality: patient.municipality || "",
+      address: patient.address || ""
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function onDeletePatient(id) {
+    if (!window.confirm("Are you sure you want to delete this patient record?")) return;
+    try {
+      await deletePatient(id);
+      await loadData();
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -95,6 +127,33 @@ export default function App() {
     setAdminUser(null);
     setPatients([]);
     setError("");
+  }
+
+  function onExportToCSV() {
+    if (patients.length === 0) return alert("No data to export");
+    
+    const headers = ["Patient Code", "Full Name", "Date of Birth", "Sex", "Contact", "Barangay", "Municipality", "Address"];
+    const rows = patients.map(p => [
+      p.patient_code || p.id.slice(0, 8),
+      p.full_name,
+      p.date_of_birth,
+      p.sex || "N/A",
+      p.contact_number || "N/A",
+      p.barangay || "N/A",
+      p.municipality || "N/A",
+      p.address || "N/A"
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `patients_registry_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   const stats = {
@@ -182,8 +241,8 @@ export default function App() {
       <div className="dashboard-grid">
         <div className="left-col">
           <section className="card">
-            <h2>👤 Create Patient Profile</h2>
-            <form onSubmit={onCreatePatient} className="form-grid">
+            <h2>{editingPatientId ? "✏️ Edit Patient Profile" : "👤 Create Patient Profile"}</h2>
+            <form onSubmit={onSavePatient} className="form-grid">
               <div className="input-group">
                 <label>Full Name</label>
                 <input
@@ -257,9 +316,19 @@ export default function App() {
                   rows="2"
                 />
               </div>
-              <button type="submit" disabled={savingPatient}>
-                {savingPatient ? "Registering..." : "Add to Registry"}
-              </button>
+              <div className="form-grid" style={{ gridTemplateColumns: editingPatientId ? '1fr 1fr' : '1fr' }}>
+                <button type="submit" disabled={savingPatient}>
+                  {savingPatient ? "Saving..." : (editingPatientId ? "Update Profile" : "Add to Registry")}
+                </button>
+                {editingPatientId && (
+                  <button type="button" className="btn-secondary" onClick={() => {
+                    setEditingPatientId(null);
+                    setPatientForm(initialPatientForm);
+                  }}>
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           </section>
         </div>
@@ -306,7 +375,12 @@ export default function App() {
           </section>
 
           <section className="card">
-            <h2>📋 Registered Patients</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0 }}>📋 Registered Patients</h2>
+              <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={onExportToCSV}>
+                Export CSV
+              </button>
+            </div>
             {patients.length > 0 ? (
               <ul className="patient-list">
                 {patients.map((patient) => (
@@ -316,11 +390,24 @@ export default function App() {
                       <span className="patient-meta">
                         {patient.patient_code || patient.id.slice(0, 8)} • {patient.sex || 'N/A'} • {new Date(patient.date_of_birth).toLocaleDateString()}
                       </span>
+                      <div className="patient-meta" style={{ marginTop: '8px', color: 'var(--primary)', fontWeight: 'bold' }}>
+                        {patient.barangay || 'N/A'}, {patient.municipality || 'N/A'}
+                      </div>
                     </div>
-                    <div className="patient-meta" style={{ textAlign: 'right' }}>
-                      {patient.barangay || 'N/A'}
-                      <br />
-                      {patient.municipality || 'N/A'}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        className="btn-secondary" 
+                        style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                        onClick={() => onEditPatient(patient)}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#c53030' }}
+                        onClick={() => onDeletePatient(patient.id)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </li>
                 ))}

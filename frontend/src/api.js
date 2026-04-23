@@ -128,3 +128,16 @@ export async function createPatient(payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function updatePatient(id, payload) {
+  return request(`/api/patients?id=${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deletePatient(id) {
+  return request(`/api/patients?id=${id}`, {
+    method: "DELETE"
+  });
+}
