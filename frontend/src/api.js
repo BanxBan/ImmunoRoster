@@ -57,13 +57,17 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    let message = "Request failed";
-    console.error(`API Error [${response.status}] at ${API_BASE_URL}${path}`);
-    try {
-      const data = await response.json();
-      message = data.error || message;
-    } catch {
-      // keep default message
+    let message = `Request failed (${response.status})`;
+    const targetUrl = `${API_BASE_URL}${path}`;
+    console.error(`API Error [${response.status}] at ${targetUrl}`);
+
+    if (response.status === 404) {
+      message = `API not found at ${targetUrl}. Please verify your backend deployment and VITE_API_BASE_URL.`;
+    } else {
+      try {
+        const data = await response.json();
+        message = data.error || message;
+      } catch { /* keep default */ }
     }
     throw new Error(message);
   }
@@ -83,13 +87,17 @@ export async function adminLogin({ identifier, password }) {
   });
 
   if (!response.ok) {
-    let message = "Login failed";
-    console.error(`Login Error [${response.status}] at ${API_BASE_URL}/api/auth/admin-login`);
-    try {
-      const data = await response.json();
-      message = data.error || message;
-    } catch {
-      // keep default
+    let message = `Login failed (${response.status})`;
+    const targetUrl = `${API_BASE_URL}/api/auth/admin-login`;
+    console.error(`Login Error [${response.status}] at ${targetUrl}`);
+    
+    if (response.status === 404) {
+      message = `Connection Error: Could not find the login service at ${targetUrl}. Please check your VITE_API_BASE_URL environment variable.`;
+    } else {
+      try {
+        const data = await response.json();
+        message = data.error || message;
+      } catch { /* keep default */ }
     }
     throw new Error(message);
   }
