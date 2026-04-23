@@ -31,9 +31,6 @@ Optional: run Vercel local emulation for backend with `npm --workspace backend r
 
 ## Deploy
 
-This repo includes a root `vercel.json` guard that intentionally fails root deployment.
-Create separate Vercel projects using subdirectory roots.
-
 1. Push this repository to GitHub.
 2. Create two Vercel projects from the same repo:
 - immunoroster-frontend with root directory `frontend`

@@ -1,4 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "node -e \"console.error('Do not deploy repo root. Create two Vercel projects with Root Directory set to frontend and backend.'); process.exit(1)\""
-}
