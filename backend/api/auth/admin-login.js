@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const admin = await authenticateAdminLogin(identifier || email, password);
 
     if (!admin) {
-      return res.status(401).json({ error: "Invalid email or password" });
+      return res.status(401).json({ error: "Invalid username/email or password" });
     }
 
     const { accessToken, refreshToken } = issueAdminTokens(admin);

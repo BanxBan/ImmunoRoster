@@ -2,10 +2,7 @@ import "dotenv/config";
 import express from "express";
 import adminLoginHandler from "./api/auth/admin-login.js";
 import refreshHandler from "./api/auth/refresh.js";
-import dailyRemindersHandler from "./api/cron/daily-reminders.js";
 import healthHandler from "./api/health.js";
-import immunizationsHandler from "./api/immunizations.js";
-import medicationsHandler from "./api/medications.js";
 import patientsHandler from "./api/patients.js";
 import providersHandler from "./api/providers.js";
 
@@ -26,10 +23,7 @@ function mountApiRoute(path, handler) {
 
 mountApiRoute("/api/auth/admin-login", adminLoginHandler);
 mountApiRoute("/api/auth/refresh", refreshHandler);
-mountApiRoute("/api/cron/daily-reminders", dailyRemindersHandler);
 mountApiRoute("/api/health", healthHandler);
-mountApiRoute("/api/immunizations", immunizationsHandler);
-mountApiRoute("/api/medications", medicationsHandler);
 mountApiRoute("/api/patients", patientsHandler);
 mountApiRoute("/api/providers", providersHandler);
 

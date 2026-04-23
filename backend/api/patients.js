@@ -9,12 +9,18 @@ export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
       const id = req.query.id;
+      const search = String(req.query.search || "").trim();
+      const barangay = String(req.query.barangay || "").trim();
+      const municipality = String(req.query.municipality || "").trim();
       let query = supabaseAdmin
         .from("patients")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (id) query = query.eq("id", id).single();
+      if (!id && search) query = query.ilike("full_name", `%${search}%`);
+      if (!id && barangay) query = query.eq("barangay", barangay);
+      if (!id && municipality) query = query.eq("municipality", municipality);
 
       const { data, error } = await query;
       if (error) throw error;

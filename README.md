@@ -1,9 +1,15 @@
-﻿# ImmunoRoster
+# ImmunoRoster
 
 Monorepo setup for production deployment:
 
 - frontend: React + Vite app (deploy to Vercel)
 - backend: API routes compatible with Vercel deployment, plus local Node dev server
+
+Core Patient Registry workflows:
+
+- patient profile management
+- demographic search and filtering
+- administrative access control
 
 ## Quick Start
 

@@ -6,6 +6,7 @@ const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRE
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_ISSUER = process.env.JWT_ISSUER || "immunoroster-api";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "immunoroster-admin";
+const JWT_PATIENT_AUDIENCE = process.env.JWT_PATIENT_AUDIENCE || "immunoroster-patient";
 const ACCESS_TOKEN_TTL = process.env.JWT_ACCESS_TTL || "1h";
 const REFRESH_TOKEN_TTL = process.env.JWT_REFRESH_TTL || "7d";
 
@@ -19,6 +20,40 @@ function readBearerToken(authorizationHeader) {
   const [scheme, token] = authorizationHeader.split(" ");
   if (scheme?.toLowerCase() !== "bearer" || !token) return null;
   return token;
+}
+
+export function signAccessToken(payload, audience) {
+  const accessSecret = mustGetSecret("JWT_ACCESS_SECRET", JWT_ACCESS_SECRET);
+  return jwt.sign(payload, accessSecret, {
+    expiresIn: ACCESS_TOKEN_TTL,
+    issuer: JWT_ISSUER,
+    audience
+  });
+}
+
+export function signRefreshToken(payload, audience) {
+  const refreshSecret = mustGetSecret("JWT_REFRESH_SECRET", JWT_REFRESH_SECRET);
+  return jwt.sign(payload, refreshSecret, {
+    expiresIn: REFRESH_TOKEN_TTL,
+    issuer: JWT_ISSUER,
+    audience
+  });
+}
+
+export function verifyAccessToken(token, audience) {
+  const accessSecret = mustGetSecret("JWT_ACCESS_SECRET", JWT_ACCESS_SECRET);
+  return jwt.verify(token, accessSecret, {
+    issuer: JWT_ISSUER,
+    audience
+  });
+}
+
+export function verifyRefreshToken(token, audience) {
+  const refreshSecret = mustGetSecret("JWT_REFRESH_SECRET", JWT_REFRESH_SECRET);
+  return jwt.verify(token, refreshSecret, {
+    issuer: JWT_ISSUER,
+    audience
+  });
 }
 
 export async function authenticateAdminLogin(identifier, password) {
@@ -49,61 +84,32 @@ export async function authenticateAdminLogin(identifier, password) {
 }
 
 export function issueAdminTokens(adminUser) {
-  const accessSecret = mustGetSecret("JWT_ACCESS_SECRET", JWT_ACCESS_SECRET);
-  const refreshSecret = mustGetSecret("JWT_REFRESH_SECRET", JWT_REFRESH_SECRET);
-
   const jwtPayload = {
     sub: adminUser.id,
     email: adminUser.email,
     role: "admin"
   };
 
-  const accessToken = jwt.sign(jwtPayload, accessSecret, {
-    expiresIn: ACCESS_TOKEN_TTL,
-    issuer: JWT_ISSUER,
-    audience: JWT_AUDIENCE
-  });
-
-  const refreshToken = jwt.sign(jwtPayload, refreshSecret, {
-    expiresIn: REFRESH_TOKEN_TTL,
-    issuer: JWT_ISSUER,
-    audience: JWT_AUDIENCE
-  });
+  const accessToken = signAccessToken(jwtPayload, JWT_AUDIENCE);
+  const refreshToken = signRefreshToken(jwtPayload, JWT_AUDIENCE);
 
   return { accessToken, refreshToken };
 }
 
 export function verifyAdminAccessToken(token) {
-  const accessSecret = mustGetSecret("JWT_ACCESS_SECRET", JWT_ACCESS_SECRET);
-  return jwt.verify(token, accessSecret, {
-    issuer: JWT_ISSUER,
-    audience: JWT_AUDIENCE
-  });
+  return verifyAccessToken(token, JWT_AUDIENCE);
 }
 
 export function refreshAdminAccessToken(refreshToken) {
-  const refreshSecret = mustGetSecret("JWT_REFRESH_SECRET", JWT_REFRESH_SECRET);
-  const decoded = jwt.verify(refreshToken, refreshSecret, {
-    issuer: JWT_ISSUER,
-    audience: JWT_AUDIENCE
-  });
-
-  const accessSecret = mustGetSecret("JWT_ACCESS_SECRET", JWT_ACCESS_SECRET);
-  const accessToken = jwt.sign(
+  const decoded = verifyRefreshToken(refreshToken, JWT_AUDIENCE);
+  return signAccessToken(
     {
       sub: decoded.sub,
       email: decoded.email,
       role: decoded.role
     },
-    accessSecret,
-    {
-      expiresIn: ACCESS_TOKEN_TTL,
-      issuer: JWT_ISSUER,
-      audience: JWT_AUDIENCE
-    }
+    JWT_AUDIENCE
   );
-
-  return accessToken;
 }
 
 export function requireAdminAuth(req, res) {

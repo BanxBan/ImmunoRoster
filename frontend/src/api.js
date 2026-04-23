@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://localhost:3000" : "");
 const AUTH_STORAGE_KEY = "immunoroster_admin_auth";
 
 function getStoredAuth() {
@@ -110,8 +111,13 @@ export function adminLogout() {
   setStoredAuth(null);
 }
 
-export async function getPatients() {
-  return request("/api/patients");
+export async function searchPatients(params = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.barangay) query.set("barangay", params.barangay);
+  if (params.municipality) query.set("municipality", params.municipality);
+  const suffix = query.toString() ? `?${query}` : "";
+  return request(`/api/patients${suffix}`);
 }
 
 export async function createPatient(payload) {
@@ -119,12 +125,4 @@ export async function createPatient(payload) {
     method: "POST",
     body: JSON.stringify(payload)
   });
-}
-
-export async function getDueImmunizations() {
-  return request("/api/immunizations?dueOnly=true");
-}
-
-export async function getDueMedications() {
-  return request("/api/medications?dueOnly=true");
 }
