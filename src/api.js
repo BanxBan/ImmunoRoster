@@ -148,3 +148,61 @@ export async function deletePatient(id) {
     method: "DELETE"
   });
 }
+
+// Immunizations
+export async function getImmunizations(params = {}) {
+  const query = new URLSearchParams();
+  if (params.patient_id) query.set("patient_id", params.patient_id);
+  if (params.status) query.set("status", params.status);
+  const suffix = query.toString() ? `?${query}` : "";
+  return request(`/api/immunizations${suffix}`);
+}
+
+export async function createImmunization(payload) {
+  return request("/api/immunizations", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateImmunization(id, payload) {
+  return request(`/api/immunizations?id=${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteImmunization(id) {
+  return request(`/api/immunizations?id=${id}`, {
+    method: "DELETE"
+  });
+}
+
+// Animal Bites
+export async function getAnimalBites(params = {}) {
+  const query = new URLSearchParams();
+  if (params.patient_id) query.set("patient_id", params.patient_id);
+  if (params.status) query.set("status", params.status);
+  const suffix = query.toString() ? `?${query}` : "";
+  return request(`/api/animal_bites${suffix}`);
+}
+
+export async function createAnimalBite(payload) {
+  return request("/api/animal_bites", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateAnimalBite(id, payload) {
+  return request(`/api/animal_bites?id=${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteAnimalBite(id) {
+  return request(`/api/animal_bites?id=${id}`, {
+    method: "DELETE"
+  });
+}

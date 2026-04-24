@@ -5,6 +5,8 @@ import refreshHandler from "./api/auth/refresh.js";
 import healthHandler from "./api/health.js";
 import patientsHandler from "./api/patients.js";
 import providersHandler from "./api/providers.js";
+import immunizationsHandler from "./api/immunizations.js";
+import animalBitesHandler from "./api/animal_bites.js";
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -26,6 +28,8 @@ mountApiRoute("/api/auth/refresh", refreshHandler);
 mountApiRoute("/api/health", healthHandler);
 mountApiRoute("/api/patients", patientsHandler);
 mountApiRoute("/api/providers", providersHandler);
+mountApiRoute("/api/immunizations", immunizationsHandler);
+mountApiRoute("/api/animal_bites", animalBitesHandler);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
