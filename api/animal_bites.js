@@ -1,6 +1,8 @@
 import { methodNotAllowed, withCors } from "./_lib/http.js";
 import { requireAdminAuth } from "./_lib/auth.js";
 import { supabaseAdmin } from "./_lib/supabase.js";
+import { validateRequest } from "./_lib/validation.js";
+import { animalBiteSchema, animalBiteUpdateSchema, patientIdQuerySchema } from "./_lib/schemas.js";
 
 export default async function handler(req, res) {
   if (withCors(req, res)) return;
@@ -8,9 +10,10 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      const id = req.query.id;
-      const patient_id = req.query.patient_id;
-      const status = req.query.status;
+      const validated = validateRequest(req, res, { query: patientIdQuerySchema });
+      if (!validated) return;
+
+      const { id, patient_id, status } = validated.query;
 
       let query = supabaseAdmin
         .from("animal_bites")
@@ -27,9 +30,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
+      const validated = validateRequest(req, res, { body: animalBiteSchema });
+      if (!validated) return;
+
       const { data, error } = await supabaseAdmin
         .from("animal_bites")
-        .insert(req.body)
+        .insert(validated.body)
         .select("*")
         .single();
 
@@ -38,12 +44,18 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "PATCH") {
-      const id = req.query.id;
+      const validated = validateRequest(req, res, {
+        query: patientIdQuerySchema.pick({ id: true }),
+        body: animalBiteUpdateSchema
+      });
+      if (!validated) return;
+
+      const id = validated.query.id;
       if (!id) return res.status(400).json({ error: "id query parameter is required" });
 
       const { data, error } = await supabaseAdmin
         .from("animal_bites")
-        .update(req.body)
+        .update(validated.body)
         .eq("id", id)
         .select("*")
         .single();
@@ -53,7 +65,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "DELETE") {
-      const id = req.query.id;
+      const validated = validateRequest(req, res, {
+        query: patientIdQuerySchema.pick({ id: true })
+      });
+      if (!validated) return;
+
+      const id = validated.query.id;
       if (!id) return res.status(400).json({ error: "id query parameter is required" });
 
       const { error } = await supabaseAdmin.from("animal_bites").delete().eq("id", id);

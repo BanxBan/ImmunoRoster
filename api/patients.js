@@ -1,6 +1,8 @@
 import { methodNotAllowed, withCors } from "./_lib/http.js";
 import { requireAdminAuth } from "./_lib/auth.js";
 import { supabaseAdmin } from "./_lib/supabase.js";
+import { validateRequest } from "./_lib/validation.js";
+import { patientSchema, patientUpdateSchema, patientSearchQuerySchema } from "./_lib/schemas.js";
 
 export default async function handler(req, res) {
   if (withCors(req, res)) return;
@@ -8,19 +10,19 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      const id = req.query.id;
-      const search = String(req.query.search || "").trim();
-      const barangay = String(req.query.barangay || "").trim();
-      const municipality = String(req.query.municipality || "").trim();
+      const validated = validateRequest(req, res, { query: patientSearchQuerySchema });
+      if (!validated) return;
+
+      const { id, search, barangay, municipality } = validated.query;
       let query = supabaseAdmin
         .from("patients")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (id) query = query.eq("id", id).single();
-      if (!id && search) query = query.ilike("full_name", `%${search}%`);
-      if (!id && barangay) query = query.eq("barangay", barangay);
-      if (!id && municipality) query = query.eq("municipality", municipality);
+      if (!id && search) query = query.ilike("full_name", `%${search.trim()}%`);
+      if (!id && barangay) query = query.eq("barangay", barangay.trim());
+      if (!id && municipality) query = query.eq("municipality", municipality.trim());
 
       const { data, error } = await query;
       if (error) throw error;
@@ -28,10 +30,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
-      const payload = req.body;
+      const validated = validateRequest(req, res, { body: patientSchema });
+      if (!validated) return;
+
       const { data, error } = await supabaseAdmin
         .from("patients")
-        .insert(payload)
+        .insert(validated.body)
         .select("*")
         .single();
 
@@ -40,12 +44,18 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "PATCH") {
-      const id = req.query.id;
+      const validated = validateRequest(req, res, {
+        query: patientSearchQuerySchema.pick({ id: true }),
+        body: patientUpdateSchema
+      });
+      if (!validated) return;
+
+      const id = validated.query.id;
       if (!id) return res.status(400).json({ error: "id query parameter is required" });
 
       const { data, error } = await supabaseAdmin
         .from("patients")
-        .update(req.body)
+        .update(validated.body)
         .eq("id", id)
         .select("*")
         .single();
@@ -55,7 +65,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "DELETE") {
-      const id = req.query.id;
+      const validated = validateRequest(req, res, {
+        query: patientSearchQuerySchema.pick({ id: true })
+      });
+      if (!validated) return;
+
+      const id = validated.query.id;
       if (!id) return res.status(400).json({ error: "id query parameter is required" });
 
       const { error } = await supabaseAdmin.from("patients").delete().eq("id", id);

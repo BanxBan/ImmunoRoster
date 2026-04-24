@@ -1,5 +1,12 @@
 import { withCors } from "../_lib/http.js";
 import { authenticateAdminLogin, issueAdminTokens } from "../_lib/auth.js";
+import { validateRequest } from "../_lib/validation.js";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  identifier: z.string().min(1, "Identifier is required"),
+  password: z.string().min(1, "Password is required"),
+}).strict();
 
 export default async function handler(req, res) {
   if (withCors(req, res)) return;
@@ -10,8 +17,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { identifier, email, password } = req.body || {};
-    const admin = await authenticateAdminLogin(identifier || email, password);
+    const validated = validateRequest(req, res, { body: loginSchema });
+    if (!validated) return;
+
+    const { identifier, password } = validated.body;
+    const admin = await authenticateAdminLogin(identifier, password);
 
     if (!admin) {
       return res.status(401).json({ error: "Invalid username/email or password" });
