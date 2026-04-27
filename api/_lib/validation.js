@@ -17,7 +17,6 @@ export function validateRequest(req, res, schemas = {}) {
         errors.body = bodyResult.error.format();
       } else {
         result.body = bodyResult.data;
-        req.body = bodyResult.data;
       }
     }
 
@@ -27,7 +26,6 @@ export function validateRequest(req, res, schemas = {}) {
         errors.query = queryResult.error.format();
       } else {
         result.query = queryResult.data;
-        req.query = queryResult.data;
       }
     }
 
@@ -37,7 +35,6 @@ export function validateRequest(req, res, schemas = {}) {
         errors.params = paramsResult.error.format();
       } else {
         result.params = paramsResult.data;
-        req.params = paramsResult.data;
       }
     }
 
@@ -51,7 +48,8 @@ export function validateRequest(req, res, schemas = {}) {
 
     return result;
   } catch (error) {
-    res.status(500).json({ error: "Internal validation error" });
+    console.error("Validation Internal Error:", error);
+    res.status(500).json({ error: "Internal validation error", details: error.message });
     return null;
   }
 }
@@ -72,5 +70,5 @@ export function escapeHTML(str) {
 /**
  * Zod helper for sanitized strings.
  */
-export const sanitizedString = z.string().transform((val) => escapeHTML(val.trim()));
-export const optionalSanitizedString = z.string().trim().transform((val) => (val ? escapeHTML(val) : val)).optional();
+export const sanitizedString = z.string().trim();
+export const optionalSanitizedString = z.string().trim().optional();

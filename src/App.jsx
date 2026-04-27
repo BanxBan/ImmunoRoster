@@ -261,7 +261,7 @@ export default function App() {
       )}
 
       {activeTab === 'patients' && (
-        <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 2fr' }}>
+        <div className="dashboard-grid">
           <section className="card">
             <h2>{editingId ? "Edit Profile" : "Register Patient"}</h2>
             <form onSubmit={savePatient} className="form-grid">
@@ -370,7 +370,7 @@ export default function App() {
       )}
 
       {activeTab === 'immunizations' && (
-        <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 2fr' }}>
+        <div className="dashboard-grid">
           <section className="card">
             <h2>💉 Log Vaccination</h2>
             <form className="form-grid" onSubmit={async (e) => {
