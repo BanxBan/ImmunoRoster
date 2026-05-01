@@ -35,7 +35,8 @@ export default async function handler(req, res) {
         id: admin.id,
         email: admin.email,
         full_name: admin.full_name,
-        role: admin.role
+        role: admin.role,
+        shift: admin.shift
       }
     });
   } catch (error) {

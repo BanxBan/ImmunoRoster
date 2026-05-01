@@ -78,7 +78,7 @@ async function request(path, options = {}) {
   return response.json();
 }
 
-export async function adminLogin({ identifier, password }) {
+export async function adminLogin({ identifier, password, currentShift }) {
   const response = await fetch(`${API_BASE_URL}/api/auth/admin-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -90,8 +90,13 @@ export async function adminLogin({ identifier, password }) {
     const targetUrl = `${API_BASE_URL}/api/auth/admin-login`;
     console.error(`Login Error [${response.status}] at ${targetUrl}`);
     
+    // Clear any potentially corrupted session on failure as requested
+    setStoredAuth(null);
+
     if (response.status === 404) {
       message = `Connection Error: Could not find the login service at ${targetUrl}. Please check your VITE_API_BASE_URL environment variable.`;
+    } else if (response.status === 500) {
+      message = `Server Error (500): The backend server encountered an error or is not responding. Please ensure your local-dev-server is running on port 3000.`;
     } else {
       try {
         const data = await response.json();
@@ -101,14 +106,10 @@ export async function adminLogin({ identifier, password }) {
     throw new Error(message);
   }
 
-  const data = await response.json();
-  setStoredAuth({
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    user: data.user
-  });
-
-  return data.user;
+  const { access_token, refresh_token, user } = await response.json();
+  const userWithShift = { ...user, shift: currentShift || user.shift };
+  setStoredAuth({ accessToken: access_token, refreshToken: refresh_token, user: userWithShift });
+  return userWithShift;
 }
 
 export function getAdminSession() {
@@ -206,3 +207,19 @@ export async function deleteAnimalBite(id) {
     method: "DELETE"
   });
 }
+
+export async function getCommunityData() {
+  return request("/api/community");
+}
+
+export async function registerNurse(data) {
+  return request("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data)
+  });
+}
+
+export async function getCensus() {
+  return request("/api/census");
+}
+
