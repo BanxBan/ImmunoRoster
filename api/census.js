@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const [patients, immunizations, bites, community] = await Promise.all([
       supabaseAdmin.from("patients").select("id, full_name, barangay"),
       supabaseAdmin.from("immunizations").select("id, status, scheduled_date, patient_id, vaccine_name, dose_number"),
-      supabaseAdmin.from("animal_bites").select("id, treatment_status, patient_id, animal_type, incident_date"),
+      supabaseAdmin.from("animal_bites").select("id, treatment_status, patient_id, animal_type, incident_date, severity_category, notes"),
       supabaseAdmin.from("community_population").select("*")
     ]);
 

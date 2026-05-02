@@ -21,16 +21,137 @@ import {
 } from "./api";
 
 const VACCINE_TYPES = [
-  "BCG", "Hepatitis B", "Pentavalent (DPT-HepB-HiB)", "Oral Polio (OPV)", 
-  "Inactivated Polio (IPV)", "PCV", "MMR (Measles, Mumps, Rubella)", 
-  "Anti-Rabies (Post-Exposure)", "Anti-Rabies (Pre-Exposure)", "Tetanus Toxoid"
+  "Hep B", "BCG (Bacillus Calmette-Guerin)", "OPV (Oral Polio Vaccine)",
+  "IPV (Inactivated Polio Vaccine)", "Pentavalent Vacc (DPT-HepB-Hib)",
+  "Rotavirus Vacc", "Measles", "MMR Vacc (Measles, Mumps, Rubella)",
+  "TT1 (Tetanus Toxoid)", "TT2 (Tetanus Toxoid)", "TT3 (Tetanus Toxoid)",
+  "TT4 (Tetanus Toxoid)", "TT5 (Tetanus Toxoid)",
+  "PCV", "Anti-Rabies (Post-Exposure)", "Anti-Rabies (Pre-Exposure)"
 ];
+
+const EPI_VACCINE_GROUPS = [
+  {
+    key: "hep-b",
+    label: "Hepatitis B",
+    group: "single",
+    minimumAge: "Birth",
+    requiredDoses: 1,
+    minimumInterval: "N/A",
+    description: "Birth dose protection against hepatitis B infection."
+  },
+  {
+    key: "bcg",
+    label: "BCG (Bacillus Calmette-Guerin)",
+    group: "single",
+    minimumAge: "Birth",
+    requiredDoses: 1,
+    minimumInterval: "N/A",
+    description: "Birth dose protection against severe childhood tuberculosis."
+  },
+  {
+    key: "ipv",
+    label: "IPV (Inactivated Polio Vaccine)",
+    group: "single",
+    minimumAge: "14 weeks",
+    requiredDoses: 1,
+    minimumInterval: "Coexists with OPV",
+    description: "Injected polio vaccine used with OPV for stronger polio protection."
+  },
+  {
+    key: "measles",
+    label: "Measles",
+    group: "single",
+    minimumAge: "9 months",
+    requiredDoses: 1,
+    minimumInterval: "N/A",
+    description: "First measles-containing vaccine dose."
+  },
+  {
+    key: "mmr",
+    label: "MMR Vacc (Measles, Mumps, Rubella)",
+    group: "single",
+    minimumAge: "1 year +",
+    requiredDoses: 1,
+    minimumInterval: "N/A",
+    description: "Protection against measles, mumps, and rubella."
+  },
+  {
+    key: "opv",
+    label: "OPV (Oral Polio Vaccine)",
+    group: "multi",
+    minimumAge: "6 weeks",
+    requiredDoses: 3,
+    minimumInterval: "4 weeks",
+    description: "Three-dose oral polio vaccine series. Patient is complete only after all 3 doses are completed."
+  },
+  {
+    key: "pentavalent",
+    label: "Pentavalent Vacc (DPT-HepB-Hib)",
+    group: "multi",
+    minimumAge: "6 weeks",
+    requiredDoses: 3,
+    minimumInterval: "4 weeks",
+    description: "Three-dose series against diphtheria, pertussis, tetanus, hepatitis B, and Hib."
+  },
+  {
+    key: "rotavirus",
+    label: "Rotavirus Vacc",
+    group: "multi",
+    minimumAge: "6 weeks",
+    requiredDoses: 2,
+    minimumInterval: "4 weeks",
+    description: "Two-dose series against severe rotavirus diarrhea."
+  },
+  {
+    key: "tt",
+    label: "TT1-TT5 (Maternal Tetanus Toxoid)",
+    group: "multi",
+    minimumAge: "Pregnancy / maternal care",
+    requiredDoses: 5,
+    minimumInterval: "Per TT schedule",
+    description: "Maternal tetanus toxoid series. Completion requires TT1 through TT5."
+  }
+];
+
+function getEpiVaccineKey(immunization = {}) {
+  const name = String(immunization.vaccine_name || "").toLowerCase();
+  const dose = Number(immunization.dose_number || 1);
+
+  if (name.includes("rabies")) return null;
+  if (name.includes("hepatitis b") || name === "hep b" || name.includes("hep b")) return "hep-b";
+  if (name.includes("bcg")) return "bcg";
+  if (name.includes("oral polio") || name.includes("opv")) return "opv";
+  if (name.includes("inactivated polio") || name.includes("ipv")) return "ipv";
+  if (name.includes("pentavalent") || name.includes("dpt")) return "pentavalent";
+  if (name.includes("rotavirus")) return "rotavirus";
+  if (name.includes("mmr")) return "mmr";
+  if (name.includes("measles")) return "measles";
+  if (name.includes("tt1") || name.includes("tt2") || name.includes("tt3") || name.includes("tt4") || name.includes("tt5")) return "tt";
+  if (name.includes("tetanus")) return "tt";
+  if (name.includes("pcv")) return "pcv";
+  return null;
+}
 
 const BITE_PROTOCOLS = {
   "Standard IM (0, 3, 7, 14, 28)": [0, 3, 7, 14, 28],
   "Thai Red Cross ID (0, 3, 7, 28)": [0, 3, 7, 28],
   "Booster (0, 3)": [0, 3]
 };
+
+const ANIMAL_GROUPS = ["Dogs", "Cats", "Rats", "Others"];
+
+function getAnimalGroup(animalType = "") {
+  const normalized = animalType.toLowerCase();
+  if (normalized.includes("dog") || normalized.includes("canine")) return "Dogs";
+  if (normalized.includes("cat") || normalized.includes("feline")) return "Cats";
+  if (normalized.includes("rat") || normalized.includes("mouse") || normalized.includes("rodent")) return "Rats";
+  return "Others";
+}
+
+function getExposureType(bite = {}) {
+  const source = `${bite.severity_category || ""} ${bite.notes || ""} ${bite.animal_type || ""}`.toLowerCase();
+  return source.includes("scratch") ? "scratched" : "bitten";
+}
 
 const initialPatientForm = {
   full_name: "",
@@ -61,6 +182,11 @@ export default function App() {
   const [isSignup, setIsSignup] = useState(false);
   const [selectedPatientForLog, setSelectedPatientForLog] = useState(null);
   const [logType, setLogType] = useState(null); // 'epi' or 'bite'
+  const [showBiteDetails, setShowBiteDetails] = useState(false);
+  const [showEpiDetails, setShowEpiDetails] = useState(false);
+  const [showActiveBiteAlert, setShowActiveBiteAlert] = useState(false);
+  const [biteAnimalType, setBiteAnimalType] = useState("Dog");
+  const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
 
   // Load Initial Data
   async function loadAllData() {
@@ -146,7 +272,7 @@ export default function App() {
   }
 
   // Animal Bite Protocol Logic
-  async function generateBiteSchedule(patientId, animalType, incidentDate, protocolName) {
+  async function generateBiteSchedule(patientId, animalType, incidentDate, protocolName, exposureType = "Bitten") {
     const days = BITE_PROTOCOLS[protocolName];
     const incident = new Date(incidentDate);
     
@@ -155,6 +281,7 @@ export default function App() {
       patient_id: patientId,
       animal_type: animalType,
       incident_date: incidentDate,
+      severity_category: exposureType,
       treatment_protocol: protocolName,
       total_required_doses: days.length,
       doses_administered: 0,
@@ -183,9 +310,98 @@ export default function App() {
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const { patients: gPatients = [], immunizations: gImms = [], animalBites: gBites = [], community: gComm = [] } = globalStats;
+    const scopedPatients = selectedBarangayFilter === "all"
+      ? gPatients
+      : gPatients.filter(p => (p.barangay || "Unknown") === selectedBarangayFilter);
+    const scopedPatientIds = new Set(scopedPatients.map(p => p.id));
+    const scopedImms = gImms.filter(imm => scopedPatientIds.has(imm.patient_id));
+    const scopedBites = gBites.filter(bite => scopedPatientIds.has(bite.patient_id));
+    const epiImms = scopedImms.filter(imm => getEpiVaccineKey(imm));
+    const epiStatsByVaccine = EPI_VACCINE_GROUPS.reduce((acc, vaccine) => {
+      acc[vaccine.key] = {
+        ...vaccine,
+        totalCourses: 0,
+        completedCourses: 0,
+        pendingCourses: 0,
+        completedDoses: 0,
+        pendingDoses: 0,
+        totalRecordedDoses: 0,
+        completionRate: 0,
+        patientCourses: new Map()
+      };
+      return acc;
+    }, {});
+
+    epiImms.forEach(imm => {
+      const key = getEpiVaccineKey(imm);
+      if (!key || !epiStatsByVaccine[key]) return;
+      const vaccineStats = epiStatsByVaccine[key];
+      const patientKey = imm.patient_id || "unknown";
+      if (!vaccineStats.patientCourses.has(patientKey)) {
+        vaccineStats.patientCourses.set(patientKey, { completedDoseNumbers: new Set(), recordedDoses: 0 });
+      }
+      const course = vaccineStats.patientCourses.get(patientKey);
+      course.recordedDoses++;
+      vaccineStats.totalRecordedDoses++;
+
+      if (imm.status === 'completed') {
+        course.completedDoseNumbers.add(Number(imm.dose_number || 1));
+        vaccineStats.completedDoses++;
+      } else {
+        vaccineStats.pendingDoses++;
+      }
+    });
+
+    Object.values(epiStatsByVaccine).forEach(data => {
+      data.patientCourses.forEach(course => {
+        data.totalCourses++;
+        if (course.completedDoseNumbers.size >= data.requiredDoses) {
+          data.completedCourses++;
+        } else {
+          data.pendingCourses++;
+        }
+      });
+      data.completionRate = data.totalCourses > 0 ? Math.round((data.completedCourses / data.totalCourses) * 100) : 0;
+      delete data.patientCourses;
+    });
+
+    const completedBiteCases = scopedBites.filter(b => b.treatment_status === 'completed').length;
+    const activeBiteCases = scopedBites.filter(b => b.treatment_status !== 'completed').length;
+    const biteStatsByAnimal = ANIMAL_GROUPS.reduce((acc, group) => {
+      acc[group] = {
+        total: 0,
+        bitten: 0,
+        scratched: 0,
+        completed: 0,
+        pending: 0,
+        active: 0,
+        activeShare: 0,
+        treatmentRate: 0
+      };
+      return acc;
+    }, {});
+
+    scopedBites.forEach(bite => {
+      const group = getAnimalGroup(bite.animal_type);
+      const exposureType = getExposureType(bite);
+      biteStatsByAnimal[group].total++;
+      biteStatsByAnimal[group][exposureType]++;
+
+      if (bite.treatment_status === 'completed') {
+        biteStatsByAnimal[group].completed++;
+      } else {
+        biteStatsByAnimal[group].pending++;
+        biteStatsByAnimal[group].active++;
+      }
+    });
+
+    Object.values(biteStatsByAnimal).forEach(data => {
+      data.treatmentRate = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+      data.activeShare = activeBiteCases > 0 ? Math.round((data.active / activeBiteCases) * 100) : 0;
+    });
     
     // Group stats by Barangay
-    const barangayStats = gPatients.reduce((acc, p) => {
+    const barangayStats = scopedPatients.reduce((acc, p) => {
       const b = p.barangay || "Unknown";
       if (!acc[b]) {
         const communityData = gComm.find(c => c.barangay === b);
@@ -199,7 +415,7 @@ export default function App() {
       }
       acc[b].count++;
       
-      const pImms = gImms.filter(i => i.patient_id === p.id);
+      const pImms = scopedImms.filter(i => i.patient_id === p.id && getEpiVaccineKey(i));
       acc[b].totalDoses += pImms.length;
       acc[b].completedDoses += pImms.filter(i => i.status === 'completed').length;
       
@@ -210,14 +426,48 @@ export default function App() {
     }, {});
 
     return {
-      totalPatients: gPatients.length,
-      totalVaccinations: gImms.length,
-      completedVaccines: gImms.filter(i => i.status === 'completed').length,
-      dueToday: gImms.filter(i => i.scheduled_date === today && i.status !== 'completed').length,
-      activeBiteCases: gBites.filter(b => b.treatment_status !== 'completed').length,
+      filterLabel: selectedBarangayFilter === "all" ? "Overall" : selectedBarangayFilter,
+      totalPatients: scopedPatients.length,
+      totalAnimalBiteCases: scopedBites.length,
+      animalBiteCaseRate: Math.round((scopedBites.length / (scopedPatients.length || 1)) * 100),
+      completedBiteCases,
+      animalBiteTreatmentRate: Math.round((completedBiteCases / (scopedBites.length || 1)) * 100),
+      activeBiteCases,
+      activeBiteCaseRate: Math.round((activeBiteCases / (scopedBites.length || 1)) * 100),
+      biteStatsByAnimal,
+      totalVaccinations: Object.values(epiStatsByVaccine).reduce((sum, data) => sum + data.totalCourses, 0),
+      completedVaccines: Object.values(epiStatsByVaccine).reduce((sum, data) => sum + data.completedCourses, 0),
+      epiStatsByVaccine,
+      dueToday: scopedImms.filter(i => i.scheduled_date === today && i.status !== 'completed').length,
       barangayStats
     };
+  }, [globalStats, selectedBarangayFilter]);
+
+  const censusBarangays = useMemo(() => {
+    const names = [
+      ...(globalStats.community || []).map(c => c.barangay),
+      ...(globalStats.patients || []).map(p => p.barangay)
+    ].filter(Boolean);
+    return [...new Set(names)];
   }, [globalStats]);
+  const censusBarangayScope = censusBarangays.length === 1 ? `Barangay ${censusBarangays[0]}` : "all barangays";
+  const overallEpiRate = Math.round((stats.completedVaccines / (stats.totalVaccinations || 1)) * 100);
+  const barangayFilterOptions = ["all", ...censusBarangays.sort()];
+  const patientById = useMemo(() => {
+    return (globalStats.patients || []).reduce((acc, patient) => {
+      acc[patient.id] = patient;
+      return acc;
+    }, {});
+  }, [globalStats.patients]);
+  const activeBiteAlerts = useMemo(() => {
+    return (globalStats.animalBites || [])
+      .filter(bite => bite.treatment_status !== 'completed')
+      .filter(bite => {
+        if (selectedBarangayFilter === "all") return true;
+        return (patientById[bite.patient_id]?.barangay || "Unknown") === selectedBarangayFilter;
+      })
+      .slice(0, 5);
+  }, [globalStats.animalBites, patientById, selectedBarangayFilter]);
 
   if (!adminUser) {
     return (
@@ -294,20 +544,241 @@ export default function App() {
 
       {activeTab === 'census' && (
         <section>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <span className="stat-value">{stats.totalPatients}</span>
-              <span className="stat-label">Total Registered</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-value">{stats.activeBiteCases}</span>
-              <span className="stat-label">Active Bite Cases</span>
-            </div>
-            <div className="stat-card" style={{ borderRight: '4px solid var(--accent)' }}>
-              <span className="stat-value" style={{ color: 'var(--accent)' }}>{stats.dueToday}</span>
-              <span className="stat-label">Due Today</span>
-            </div>
+          <div className="census-intro">
+            This section presents the barangay trends and cumulative reported cases of selected vaccine-preventable diseases (VPDs) and animal bite incidents in {censusBarangayScope} up to the year {new Date().getFullYear()}.
           </div>
+
+          <div className="active-alert">
+            <button
+              type="button"
+              className="active-alert-trigger"
+              onClick={() => setShowActiveBiteAlert(!showActiveBiteAlert)}
+            >
+              <div className="active-alert-main">
+                <span className="active-alert-icon">AB</span>
+                <div>
+                  <strong>Active Bite Cases</strong>
+                  <span>{stats.filterLabel} • {stats.activeBiteCases} pending treatment{stats.activeBiteCases === 1 ? "" : "s"}</span>
+                </div>
+              </div>
+              <span className="active-alert-count">{stats.activeBiteCaseRate}%</span>
+            </button>
+
+            {showActiveBiteAlert && (
+              <ul className="active-alert-list">
+                {activeBiteAlerts.map(bite => (
+                  <li key={bite.id} className="active-alert-item">
+                    <div className="data-main">
+                      <span className="data-title">{patientById[bite.patient_id]?.full_name || 'Loading...'}</span>
+                      <span className="data-sub">{bite.animal_type} bite • Status: {bite.treatment_status}</span>
+                    </div>
+                    <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
+                  </li>
+                ))}
+                {activeBiteAlerts.length === 0 && (
+                  <li className="active-alert-empty">No active bite cases for this filter.</li>
+                )}
+              </ul>
+            )}
+          </div>
+
+          <div className="barangay-filter-bar">
+            {barangayFilterOptions.map(barangay => (
+              <button
+                type="button"
+                key={barangay}
+                className={`filter-chip ${selectedBarangayFilter === barangay ? 'active' : ''}`}
+                onClick={() => setSelectedBarangayFilter(barangay)}
+              >
+                {barangay === "all" ? "Overall" : barangay}
+              </button>
+            ))}
+          </div>
+
+          <div className="census-highlights">
+            <button
+              type="button"
+              className={`metric-card metric-card-button ${showBiteDetails ? 'active' : ''}`}
+              onClick={() => setShowBiteDetails(!showBiteDetails)}
+            >
+              <div className="metric-icon bite-icon">AB</div>
+              <div className="metric-content">
+                <span className="stat-value">{stats.animalBiteCaseRate}%</span>
+                <span className="stat-label">Overall Animal Bite Cases</span>
+                <span className="metric-subvalue">{stats.filterLabel}</span>
+                <span className="metric-subvalue">{stats.totalAnimalBiteCases} total cases</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              className={`metric-card metric-card-button ${showEpiDetails ? 'active' : ''}`}
+              onClick={() => setShowEpiDetails(!showEpiDetails)}
+            >
+              <div className="metric-icon epi-icon">%</div>
+              <div className="metric-content">
+                <span className="stat-value">{overallEpiRate}%</span>
+                <span className="stat-label">Overall EPI Rate</span>
+                <span className="metric-subvalue">{stats.filterLabel}</span>
+                <span className="metric-subvalue">{stats.completedVaccines} of {stats.totalVaccinations} completed</span>
+              </div>
+            </button>
+          </div>
+
+          {showBiteDetails && (
+            <div className="bite-details-panel">
+              <div className="bite-module-section">
+                <div className="bite-module-heading">
+                  <h3>Animal Exposure Breakdown</h3>
+                  <span>Bitten vs scratched cases per animal</span>
+                </div>
+                <div className="bite-breakdown">
+                  {ANIMAL_GROUPS.map(group => {
+                    const data = stats.biteStatsByAnimal[group];
+                    return (
+                      <div className="bite-breakdown-card" key={`exposure-${group}`}>
+                        <div className="bite-breakdown-header">
+                          <div>
+                            <h3>{group}</h3>
+                            <span>{data.total} cases</span>
+                          </div>
+                          <strong>{stats.totalAnimalBiteCases > 0 ? Math.round((data.total / stats.totalAnimalBiteCases) * 100) : 0}%</strong>
+                        </div>
+                        <div className="bite-stat-row">
+                          <span>Bitten</span>
+                          <strong>{data.bitten}</strong>
+                        </div>
+                        <div className="bite-stat-row">
+                          <span>Scratched</span>
+                          <strong>{data.scratched}</strong>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bite-module-section">
+                <div className="active-bite-summary treatment-summary">
+                  <div>
+                    <span className="stat-value">{stats.animalBiteTreatmentRate}%</span>
+                    <span className="stat-label">Overall Treatment Rate</span>
+                  </div>
+                  <strong>{stats.completedBiteCases} / {stats.totalAnimalBiteCases}</strong>
+                </div>
+                <div className="bite-breakdown">
+                  {ANIMAL_GROUPS.map(group => {
+                    const data = stats.biteStatsByAnimal[group];
+                    return (
+                      <div className="bite-breakdown-card" key={`treatment-${group}`}>
+                        <div className="bite-breakdown-header">
+                          <div>
+                            <h3>{group}</h3>
+                            <span>Treatment status</span>
+                          </div>
+                          <strong>{data.treatmentRate}%</strong>
+                        </div>
+                        <div className="bite-stat-row">
+                          <span>Completed</span>
+                          <strong>{data.completed}</strong>
+                        </div>
+                        <div className="bite-stat-row">
+                          <span>Pending</span>
+                          <strong>{data.pending}</strong>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bite-module-section">
+                <div className="active-bite-summary">
+                <div>
+                  <span className="stat-value">{stats.activeBiteCases}</span>
+                  <span className="stat-label">Active Bite Cases</span>
+                </div>
+                <strong>{stats.activeBiteCaseRate}%</strong>
+              </div>
+
+              <div className="bite-breakdown">
+                {ANIMAL_GROUPS.map(group => {
+                  const data = stats.biteStatsByAnimal[group];
+                  return (
+                    <div className="bite-breakdown-card" key={`active-${group}`}>
+                      <div className="bite-breakdown-header">
+                        <div>
+                          <h3>{group}</h3>
+                          <span>Active cases</span>
+                        </div>
+                        <strong>{data.activeShare}%</strong>
+                      </div>
+                      <div className="bite-stat-row bite-stat-row-highlight">
+                        <span>Active Share</span>
+                        <strong>{data.active} ({data.activeShare}%)</strong>
+                      </div>
+                      <div className="bite-stat-row">
+                        <span>Pending</span>
+                        <strong>{data.pending}</strong>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              </div>
+            </div>
+          )}
+
+          {showEpiDetails && (
+            <div className="epi-details-panel">
+              <div className="epi-overview-panel">
+                <h3>Expanded Program on Immunization</h3>
+                <p>
+                  This view tracks vaccine completion by patient course. Multi-dose vaccines are marked completed only when all required doses are completed; otherwise the patient remains pending for that vaccine.
+                </p>
+              </div>
+
+              {[
+                ["single", "Single Dose Vaccines"],
+                ["multi", "Multi-Dose Vaccines"]
+              ].map(([groupKey, groupLabel]) => (
+                <div className="epi-section" key={groupKey}>
+                  <h3>{groupLabel}</h3>
+                  <div className="epi-table">
+                    <div className="epi-table-row epi-table-head">
+                      <span>Vaccine Name</span>
+                      <span>Minimum Age</span>
+                      <span>Doses</span>
+                      <span>Interval</span>
+                      <span>Immunized</span>
+                      <span>Pending</span>
+                      <span>Rate</span>
+                    </div>
+                    {EPI_VACCINE_GROUPS.filter(vaccine => vaccine.group === groupKey).map(vaccine => {
+                      const data = stats.epiStatsByVaccine[vaccine.key];
+                      return (
+                        <details className="epi-table-row epi-vaccine-row" key={vaccine.key}>
+                          <summary>
+                            <span className="epi-vaccine-name">{data.label}</span>
+                            <span>{data.minimumAge}</span>
+                            <span>{data.requiredDoses}</span>
+                            <span>{data.minimumInterval}</span>
+                            <span className="epi-completed">{data.completedCourses} / {data.totalCourses}</span>
+                            <span className="epi-pending">{data.pendingCourses}</span>
+                            <span className="epi-rate">{data.completionRate}%</span>
+                          </summary>
+                          <p>{data.description}</p>
+                          <div className="epi-dose-detail">
+                            <span>Recorded completed doses: {data.completedDoses}</span>
+                            <span>Recorded pending doses: {data.pendingDoses}</span>
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="dashboard-grid">
             <div className="card" style={{ textAlign: 'center' }}>
@@ -317,11 +788,11 @@ export default function App() {
                   <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
                   <circle 
                     cx="18" cy="18" r="16" fill="none" stroke="var(--primary)" strokeWidth="3" 
-                    strokeDasharray={`${(stats.completedVaccines / (stats.totalVaccinations || 1)) * 100} 100`}
+                    strokeDasharray={`${overallEpiRate} 100`}
                   />
                 </svg>
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{Math.round((stats.completedVaccines / (stats.totalVaccinations || 1)) * 100)}%</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{overallEpiRate}%</div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>COMPLETED</div>
                 </div>
               </div>
@@ -337,6 +808,20 @@ export default function App() {
 
             <div className="card">
               <h2>🏘️ Barangay Statistics</h2>
+              <div className="barangay-summary">
+                <div>
+                  <span className="stat-value">{stats.totalPatients}</span>
+                  <span className="stat-label">Total Registered Patients</span>
+                </div>
+                <div>
+                  <span className="stat-value">{stats.activeBiteCases}</span>
+                  <span className="stat-label">Active Bite Cases</span>
+                </div>
+                <div>
+                  <span className="stat-value">{stats.dueToday}</span>
+                  <span className="stat-label">Due Today</span>
+                </div>
+              </div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--border)' }}>
@@ -374,27 +859,7 @@ export default function App() {
               </table>
             </div>
 
-            <div className="card">
-              <h2>📅 Upcoming EPI Reminders</h2>
-              <ul className="data-list">
-                {globalStats.immunizations
-                  .filter(i => i.status !== 'completed' && new Date(i.scheduled_date) >= new Date())
-                  .slice(0, 5)
-                  .map(imm => (
-                    <li key={imm.id} className="data-item">
-                      <div className="data-main">
-                        <span className="data-title">{globalStats.patients.find(p => p.id === imm.patient_id)?.full_name || 'Loading...'}</span>
-                        <span className="data-sub">{imm.vaccine_name} - Dose #{imm.dose_number}</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span className="badge badge-pending">{imm.scheduled_date}</span>
-                      </div>
-                    </li>
-                  ))
-                }
-              </ul>
-            </div>
-
+            {false && (
             <div className="card">
               <h2>🐕 Active Bite Cases</h2>
               <ul className="data-list">
@@ -416,6 +881,7 @@ export default function App() {
                 {globalStats.animalBites.filter(b => b.treatment_status !== 'completed').length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No active bite cases.</p>}
               </ul>
             </div>
+            )}
           </div>
         </section>
       )}
@@ -507,19 +973,41 @@ export default function App() {
                     <form className="form-grid" onSubmit={async (e) => {
                       e.preventDefault();
                       const fd = new FormData(e.target);
-                      await generateBiteSchedule(selectedPatientForLog.id, fd.get("animal"), fd.get("date"), fd.get("protocol"));
+                      const selectedAnimal = fd.get("animal");
+                      const customAnimal = String(fd.get("otherAnimal") || "").trim();
+                      const animalType = selectedAnimal === "Other" ? customAnimal : selectedAnimal;
+                      await generateBiteSchedule(selectedPatientForLog.id, animalType, fd.get("date"), fd.get("protocol"), fd.get("exposure"));
                       setSelectedPatientForLog(null);
+                      setBiteAnimalType("Dog");
                       loadAllData();
                     }}>
                       <div className="input-row">
                         <div className="input-group">
                           <label>Animal Type</label>
-                          <input name="animal" placeholder="e.g. Dog, Cat" required />
+                          <select name="animal" value={biteAnimalType} onChange={e => setBiteAnimalType(e.target.value)} required>
+                            <option value="Dog">Dog</option>
+                            <option value="Cat">Cat</option>
+                            <option value="Rat">Rat</option>
+                            <option value="Other">Other</option>
+                          </select>
                         </div>
                         <div className="input-group">
                           <label>Incident Date</label>
                           <input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required />
                         </div>
+                      </div>
+                      {biteAnimalType === "Other" && (
+                        <div className="input-group">
+                          <label>Specify Animal</label>
+                          <input name="otherAnimal" placeholder="Type animal name" required />
+                        </div>
+                      )}
+                      <div className="input-group">
+                        <label>Incident Type</label>
+                        <select name="exposure" required>
+                          <option value="Bitten">Bitten</option>
+                          <option value="Scratched">Scratched</option>
+                        </select>
                       </div>
                       <div className="input-group">
                         <label>Treatment Protocol</label>

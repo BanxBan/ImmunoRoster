@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "start cmd /k node local-dev-server.js && vite",
+    "dev": "node scripts/dev.mjs",
     "dev:frontend": "vite",
     "dev:backend": "node local-dev-server.js",
     "build": "vite build",
