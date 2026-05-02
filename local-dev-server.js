@@ -21,6 +21,7 @@ function mountApiRoute(path, handler) {
     try {
       await handler(req, res);
     } catch (error) {
+      console.error("API Error at " + req.path + ":", error);
       res.status(500).json({ error: error.message || "Internal server error" });
     }
   });
