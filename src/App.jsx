@@ -76,6 +76,15 @@ const EPI_VACCINE_GROUPS = [
     description: "Protection against measles, mumps, and rubella."
   },
   {
+    key: "pcv",
+    label: "PCV (Pneumococcal Conjugate Vaccine)",
+    group: "single",
+    minimumAge: "6 weeks",
+    requiredDoses: 1,
+    minimumInterval: "N/A",
+    description: "Pneumococcal vaccine dose tracked in records."
+  },
+  {
     key: "opv",
     label: "OPV (Oral Polio Vaccine)",
     group: "multi",
@@ -313,6 +322,9 @@ export default function App() {
     const scopedPatients = selectedBarangayFilter === "all"
       ? gPatients
       : gPatients.filter(p => (p.barangay || "Unknown") === selectedBarangayFilter);
+    const scopedPopulation = selectedBarangayFilter === "all"
+      ? gComm.reduce((sum, entry) => sum + Number(entry.total_population || 0), 0)
+      : (gComm.find(entry => entry.barangay === selectedBarangayFilter)?.total_population || 0);
     const scopedPatientIds = new Set(scopedPatients.map(p => p.id));
     const scopedImms = gImms.filter(imm => scopedPatientIds.has(imm.patient_id));
     const scopedBites = gBites.filter(bite => scopedPatientIds.has(bite.patient_id));
@@ -429,7 +441,10 @@ export default function App() {
       filterLabel: selectedBarangayFilter === "all" ? "Overall" : selectedBarangayFilter,
       totalPatients: scopedPatients.length,
       totalAnimalBiteCases: scopedBites.length,
-      animalBiteCaseRate: Math.round((scopedBites.length / (scopedPatients.length || 1)) * 100),
+      scopedPopulation,
+      animalBiteIncidencePer1000: scopedPopulation > 0
+        ? Math.round(((scopedBites.length / scopedPopulation) * 1000) * 100) / 100
+        : 0,
       completedBiteCases,
       animalBiteTreatmentRate: Math.round((completedBiteCases / (scopedBites.length || 1)) * 100),
       activeBiteCases,
@@ -437,6 +452,8 @@ export default function App() {
       biteStatsByAnimal,
       totalVaccinations: Object.values(epiStatsByVaccine).reduce((sum, data) => sum + data.totalCourses, 0),
       completedVaccines: Object.values(epiStatsByVaccine).reduce((sum, data) => sum + data.completedCourses, 0),
+      totalEpiRecordedDoses: Object.values(epiStatsByVaccine).reduce((sum, data) => sum + data.totalRecordedDoses, 0),
+      completedEpiRecordedDoses: Object.values(epiStatsByVaccine).reduce((sum, data) => sum + data.completedDoses, 0),
       epiStatsByVaccine,
       dueToday: scopedImms.filter(i => i.scheduled_date === today && i.status !== 'completed').length,
       barangayStats
@@ -451,7 +468,7 @@ export default function App() {
     return [...new Set(names)];
   }, [globalStats]);
   const censusBarangayScope = censusBarangays.length === 1 ? `Barangay ${censusBarangays[0]}` : "all barangays";
-  const overallEpiRate = Math.round((stats.completedVaccines / (stats.totalVaccinations || 1)) * 100);
+  const overallEpiRate = Math.round((stats.completedEpiRecordedDoses / (stats.totalEpiRecordedDoses || 1)) * 100);
   const barangayFilterOptions = ["all", ...censusBarangays.sort()];
   const patientById = useMemo(() => {
     return (globalStats.patients || []).reduce((acc, patient) => {
@@ -603,10 +620,12 @@ export default function App() {
             >
               <div className="metric-icon bite-icon">AB</div>
               <div className="metric-content">
-                <span className="stat-value">{stats.animalBiteCaseRate}%</span>
+                <span className="stat-value">{stats.totalAnimalBiteCases}</span>
                 <span className="stat-label">Overall Animal Bite Cases</span>
                 <span className="metric-subvalue">{stats.filterLabel}</span>
-                <span className="metric-subvalue">{stats.totalAnimalBiteCases} total cases</span>
+                <span className="metric-subvalue">
+                  {stats.animalBiteIncidencePer1000} per 1,000 population
+                </span>
               </div>
             </button>
             <button
@@ -619,7 +638,9 @@ export default function App() {
                 <span className="stat-value">{overallEpiRate}%</span>
                 <span className="stat-label">Overall EPI Rate</span>
                 <span className="metric-subvalue">{stats.filterLabel}</span>
-                <span className="metric-subvalue">{stats.completedVaccines} of {stats.totalVaccinations} completed</span>
+                <span className="metric-subvalue">
+                  {stats.completedEpiRecordedDoses} of {stats.totalEpiRecordedDoses} recorded doses completed
+                </span>
               </div>
             </button>
           </div>
@@ -1073,7 +1094,21 @@ export default function App() {
                       <span className="data-sub">Status: {b.doses_administered}/{b.total_required_doses} doses</span>
                       <span className="data-sub" style={{ fontSize: '0.75rem' }}>Hx: {b.animal_type} bite ({b.incident_date})</span>
                     </div>
-                    <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
+                      {b.treatment_status !== 'completed' && (
+                        <button
+                          className="primary"
+                          style={{ padding: '0.35rem 0.7rem' }}
+                          onClick={async () => {
+                            await updateAnimalBite(b.id, { treatment_status: 'completed' });
+                            loadAllData();
+                          }}
+                        >
+                          Mark Completed
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
