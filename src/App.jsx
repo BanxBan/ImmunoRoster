@@ -485,6 +485,27 @@ export default function App() {
       })
       .slice(0, 5);
   }, [globalStats.animalBites, patientById, selectedBarangayFilter]);
+  const registryAnimalBiteActive = useMemo(() => {
+    return [...animalBites]
+      .filter(b => b.treatment_status !== 'completed')
+      .sort((a, b) => new Date(b.incident_date) - new Date(a.incident_date));
+  }, [animalBites]);
+  const registryAnimalBiteHistory = useMemo(() => {
+    return [...animalBites]
+      .sort((a, b) => new Date(b.incident_date) - new Date(a.incident_date))
+      .slice(0, 12);
+  }, [animalBites]);
+  const registryEpiActive = useMemo(() => {
+    return [...immunizations]
+      .filter(i => i.status !== 'completed')
+      .sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
+  }, [immunizations]);
+  const registryEpiHistory = useMemo(() => {
+    return [...immunizations]
+      .filter(i => i.status === 'completed')
+      .sort((a, b) => new Date(b.administered_date || b.scheduled_date) - new Date(a.administered_date || a.scheduled_date))
+      .slice(0, 12);
+  }, [immunizations]);
 
   if (!adminUser) {
     return (
@@ -615,7 +636,7 @@ export default function App() {
           <div className="census-highlights">
             <button
               type="button"
-              className={`metric-card metric-card-button ${showBiteDetails ? 'active' : ''}`}
+              className={`metric-card metric-card-button bite-metric ${showBiteDetails ? 'active' : ''}`}
               onClick={() => setShowBiteDetails(!showBiteDetails)}
             >
               <div className="metric-icon bite-icon">AB</div>
@@ -630,7 +651,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              className={`metric-card metric-card-button ${showEpiDetails ? 'active' : ''}`}
+              className={`metric-card metric-card-button epi-metric ${showEpiDetails ? 'active' : ''}`}
               onClick={() => setShowEpiDetails(!showEpiDetails)}
             >
               <div className="metric-icon epi-icon">%</div>
@@ -646,7 +667,11 @@ export default function App() {
           </div>
 
           {showBiteDetails && (
-            <div className="bite-details-panel">
+            <div className="module-panel module-panel-bite bite-details-panel">
+              <div className="module-panel-header">
+                <h3>Animal Bite Module</h3>
+                <span>Exposure, treatment status, and active case distribution</span>
+              </div>
               <div className="bite-module-section">
                 <div className="bite-module-heading">
                   <h3>Animal Exposure Breakdown</h3>
@@ -750,7 +775,11 @@ export default function App() {
           )}
 
           {showEpiDetails && (
-            <div className="epi-details-panel">
+            <div className="module-panel module-panel-epi epi-details-panel">
+              <div className="module-panel-header">
+                <h3>EPI Module</h3>
+                <span>Single-dose and multi-dose vaccine course completion</span>
+              </div>
               <div className="epi-overview-panel">
                 <h3>Expanded Program on Immunization</h3>
                 <p>
@@ -830,15 +859,15 @@ export default function App() {
             <div className="card">
               <h2>🏘️ Barangay Statistics</h2>
               <div className="barangay-summary">
-                <div>
+                <div className="summary-card summary-card-patients">
                   <span className="stat-value">{stats.totalPatients}</span>
                   <span className="stat-label">Total Registered Patients</span>
                 </div>
-                <div>
+                <div className="summary-card summary-card-bites">
                   <span className="stat-value">{stats.activeBiteCases}</span>
                   <span className="stat-label">Active Bite Cases</span>
                 </div>
-                <div>
+                <div className="summary-card summary-card-due">
                   <span className="stat-value">{stats.dueToday}</span>
                   <span className="stat-label">Due Today</span>
                 </div>
@@ -953,7 +982,7 @@ export default function App() {
           </section>
 
           <section className="card">
-            <h2>Registry List</h2>
+            <h2>Patient Registry List</h2>
             <div className="data-list">
               {patients.map(p => (
                 <div key={p.id} className="data-item">
@@ -1083,11 +1112,19 @@ export default function App() {
 
       {activeTab === 'registry' && (
         <section>
+          <div className="registry-flow-header">
+            <h2>Registry List (Active Patients)</h2>
+            <span>Grouped into Animal Bite and EPI with Status and Hx sections</span>
+          </div>
           <div className="dashboard-grid">
-            <div className="card">
-              <h2>🐕 Animal Bite Registry</h2>
+            <div className="card registry-card registry-card-bite">
+              <h2>🐕 Animal Bite</h2>
+              <div className="registry-group-header">
+                <h3>Status (Active Patients)</h3>
+                <span>{registryAnimalBiteActive.length} active</span>
+              </div>
               <div className="data-list">
-                {animalBites.map(b => (
+                {registryAnimalBiteActive.map(b => (
                   <div key={b.id} className="data-item">
                     <div className="data-main">
                       <span className="data-title">{b.patients?.full_name}</span>
@@ -1111,13 +1148,40 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+                {registryAnimalBiteActive.length === 0 && (
+                  <p className="registry-empty">No active animal bite patients.</p>
+                )}
+              </div>
+              <div className="registry-group-header">
+                <h3>Hx (Recent History)</h3>
+                <span>Latest 12 records</span>
+              </div>
+              <div className="data-list">
+                {registryAnimalBiteHistory.map(b => (
+                  <div key={`hx-bite-${b.id}`} className="data-item">
+                    <div className="data-main">
+                      <span className="data-title">{b.patients?.full_name || "Unknown Patient"}</span>
+                      <span className="data-sub">
+                        {b.animal_type} • Incident: {b.incident_date}
+                      </span>
+                    </div>
+                    <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
+                  </div>
+                ))}
+                {registryAnimalBiteHistory.length === 0 && (
+                  <p className="registry-empty">No animal bite history yet.</p>
+                )}
               </div>
             </div>
 
-            <div className="card">
-              <h2>💉 EPI Registry (Active)</h2>
+            <div className="card registry-card registry-card-epi">
+              <h2>💉 EPI</h2>
+              <div className="registry-group-header">
+                <h3>Status (Active Patients)</h3>
+                <span>{registryEpiActive.length} active</span>
+              </div>
               <div className="data-list">
-                {immunizations.filter(i => i.status !== 'completed').sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date)).map(imm => {
+                {registryEpiActive.map(imm => {
                   const today = new Date().toISOString().split('T')[0];
                   const isDue = imm.scheduled_date <= today;
                   return (
@@ -1139,6 +1203,29 @@ export default function App() {
                     </div>
                   );
                 })}
+                {registryEpiActive.length === 0 && (
+                  <p className="registry-empty">No active EPI patients.</p>
+                )}
+              </div>
+              <div className="registry-group-header">
+                <h3>Hx (Recent History)</h3>
+                <span>Latest 12 completed records</span>
+              </div>
+              <div className="data-list">
+                {registryEpiHistory.map(imm => (
+                  <div key={`hx-epi-${imm.id}`} className="data-item">
+                    <div className="data-main">
+                      <span className="data-title">{imm.patients?.full_name || "Unknown Patient"}</span>
+                      <span className="data-sub">
+                        {imm.vaccine_name} (# {imm.dose_number}) • Completed: {imm.administered_date || imm.scheduled_date}
+                      </span>
+                    </div>
+                    <span className="badge badge-completed">completed</span>
+                  </div>
+                ))}
+                {registryEpiHistory.length === 0 && (
+                  <p className="registry-empty">No EPI history yet.</p>
+                )}
               </div>
             </div>
           </div>

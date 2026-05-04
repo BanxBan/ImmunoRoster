@@ -270,6 +270,16 @@ header h1 {
   padding: 1.5rem;
 }
 
+.bite-metric {
+  background: linear-gradient(145deg, #fff7f7, #fff);
+  border-color: #fecaca;
+}
+
+.epi-metric {
+  background: linear-gradient(145deg, #f5f8ff, #fff);
+  border-color: #c7d2fe;
+}
+
 .metric-card-button {
   color: inherit;
   font: inherit;
@@ -330,8 +340,76 @@ header h1 {
   padding: 1rem;
 }
 
+.barangay-summary .summary-card-patients {
+  background: #dbeafe !important;
+  border-color: #60a5fa !important;
+}
+
+.barangay-summary .summary-card-bites {
+  background: #fee2e2 !important;
+  border-color: #f87171 !important;
+}
+
+.barangay-summary .summary-card-due {
+  background: #fef3c7 !important;
+  border-color: #fbbf24 !important;
+}
+
 .bite-details-panel {
   margin-bottom: 2rem;
+}
+
+.module-panel {
+  border-radius: 14px;
+  margin-bottom: 2rem;
+  padding: 1rem;
+}
+
+.module-panel-header {
+  align-items: center;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.8rem 1rem;
+}
+
+.module-panel-header h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.module-panel-header span {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.module-panel-bite {
+  background: linear-gradient(180deg, #fff7f7 0%, rgba(255, 247, 247, 0.45) 100%);
+  border: 1px solid #fecaca;
+}
+
+.module-panel-bite .module-panel-header {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
+.module-panel-bite .module-panel-header span {
+  color: #991b1b;
+}
+
+.module-panel-epi {
+  background: linear-gradient(180deg, #f4f7ff 0%, rgba(244, 247, 255, 0.45) 100%);
+  border: 1px solid #c7d2fe;
+}
+
+.module-panel-epi .module-panel-header {
+  background: #e0e7ff;
+  border: 1px solid #c7d2fe;
+}
+
+.module-panel-epi .module-panel-header span {
+  color: #3730a3;
 }
 
 .bite-module-section {
@@ -773,6 +851,78 @@ button.secondary:hover {
   grid-template-columns: 1fr 2fr;
 }
 
+.registry-flow-header {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.registry-flow-header h2 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.registry-flow-header span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.registry-card {
+  border-width: 1px;
+}
+
+.registry-card-bite {
+  background: linear-gradient(180deg, #fff8f8 0%, #ffffff 100%);
+  border-color: #fecaca;
+}
+
+.registry-card-epi {
+  background: linear-gradient(180deg, #f7f9ff 0%, #ffffff 100%);
+  border-color: #c7d2fe;
+}
+
+.registry-group-header {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  margin: 1rem 0 0.5rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.registry-card-bite .registry-group-header {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.registry-card-epi .registry-group-header {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.registry-group-header h3 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.registry-group-header span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.registry-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.9rem 0.25rem;
+}
+
 @media (max-width: 768px) {
   .layout {
     padding: 1rem;
@@ -836,5 +986,17 @@ button.secondary:hover {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .module-panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .registry-flow-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
   }
 }
