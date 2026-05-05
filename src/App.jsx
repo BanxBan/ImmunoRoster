@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   adminLogin,
   adminLogout,
@@ -189,13 +189,19 @@ export default function App() {
   const [community, setCommunity] = useState([]);
   const [globalStats, setGlobalStats] = useState({ patients: [], immunizations: [], animalBites: [], community: [] });
   const [isSignup, setIsSignup] = useState(false);
-  const [selectedPatientForLog, setSelectedPatientForLog] = useState(null);
-  const [logType, setLogType] = useState(null); // 'epi' or 'bite'
+  const [logType, setLogType] = useState('none');
   const [showBiteDetails, setShowBiteDetails] = useState(false);
   const [showEpiDetails, setShowEpiDetails] = useState(false);
   const [showActiveBiteAlert, setShowActiveBiteAlert] = useState(false);
   const [biteAnimalType, setBiteAnimalType] = useState("Dog");
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
+  const formRef = useRef(null);
+
+  useEffect(() => {
+    if (editingId && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [editingId, logType]);
 
   // Load Initial Data
   async function loadAllData() {
@@ -222,6 +228,12 @@ export default function App() {
   useEffect(() => {
     loadAllData();
   }, [adminUser]);
+
+  useEffect(() => {
+    setShowBiteDetails(false);
+    setShowEpiDetails(false);
+    setShowActiveBiteAlert(false);
+  }, [activeTab]);
 
   // Auth Handlers
   const getCurrentShift = () => {
@@ -271,11 +283,45 @@ export default function App() {
   // Patient Handlers
   async function savePatient(e) {
     e.preventDefault();
+    const fd = new FormData(e.target);
     try {
-      if (editingId) await updatePatient(editingId, patientForm);
-      else await createPatient(patientForm);
+      const payload = {
+        full_name: patientForm.full_name,
+        date_of_birth: patientForm.date_of_birth,
+        sex: patientForm.sex,
+        barangay: patientForm.barangay,
+        municipality: patientForm.municipality,
+        province: patientForm.province,
+        contact_number: patientForm.contact_number,
+        address: patientForm.address
+      };
+
+      let savedPatient;
+      if (editingId) {
+        savedPatient = await updatePatient(editingId, payload);
+      } else {
+        savedPatient = await createPatient(payload);
+      }
+      
+      if (logType === 'bite') {
+        const selectedAnimal = fd.get("animal");
+        const customAnimal = String(fd.get("otherAnimal") || "").trim();
+        const finalAnimal = selectedAnimal === "Other" ? customAnimal : selectedAnimal;
+        await generateBiteSchedule(savedPatient.id, finalAnimal, fd.get("date"), fd.get("protocol"), fd.get("exposure"));
+      } else if (logType === 'epi') {
+        await createImmunization({
+          patient_id: savedPatient.id,
+          vaccine_name: fd.get("vaccine"),
+          dose_number: parseInt(fd.get("dose")),
+          scheduled_date: fd.get("date"),
+          status: 'pending'
+        });
+      }
+
       setPatientForm(initialPatientForm);
       setEditingId(null);
+      setLogType('none');
+      setBiteAnimalType('Dog');
       loadAllData();
     } catch (err) { setError(err.message); }
   }
@@ -565,7 +611,7 @@ export default function App() {
         <div className="header-main">
           <h1>🛡️ ImmunoRoster</h1>
           <div className="user-badge" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span className="user-name" style={{ fontWeight: 700 }}>{adminUser.full_name}</span>
+            <span className="user-name" style={{ fontWeight: 700 }}>Hi, Nurse {adminUser.full_name}! Welcome</span>
             <span className="badge badge-pending" style={{ padding: '0.2rem 0.6rem' }}>{adminUser.shift} Shift</span>
           </div>
         </div>
@@ -574,8 +620,8 @@ export default function App() {
 
       <nav className="nav-tabs">
         <button className={`nav-tab ${activeTab === 'census' ? 'active' : ''}`} onClick={() => setActiveTab('census')}>📊 Census Summary</button>
-        <button className={`nav-tab ${activeTab === 'patients' ? 'active' : ''}`} onClick={() => setActiveTab('patients')}>👤 Pt Reg / Profile</button>
-        <button className={`nav-tab ${activeTab === 'registry' ? 'active' : ''}`} onClick={() => setActiveTab('registry')}>📋 Registry List</button>
+        <button className={`nav-tab ${activeTab === 'patients' ? 'active' : ''}`} onClick={() => setActiveTab('patients')}>👤 Patient Registration</button>
+        <button className={`nav-tab ${activeTab === 'registry' ? 'active' : ''}`} onClick={() => setActiveTab('registry')}>📋 Registries</button>
       </nav>
 
       {error && <div className="error-toast" onClick={() => setError("")}>{error}</div>}
@@ -668,9 +714,14 @@ export default function App() {
 
           {showBiteDetails && (
             <div className="module-panel module-panel-bite bite-details-panel">
-              <div className="module-panel-header">
-                <h3>Animal Bite Module</h3>
-                <span>Exposure, treatment status, and active case distribution</span>
+              <div className="module-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h3 style={{ margin: 0, marginBottom: '0.2rem' }}>Animal Bite Module</h3>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Exposure, treatment status, and active case distribution</span>
+                </div>
+                <button type="button" className="secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => setShowBiteDetails(false)}>
+                  ✕ Close
+                </button>
               </div>
               <div className="bite-module-section">
                 <div className="bite-module-heading">
@@ -776,9 +827,14 @@ export default function App() {
 
           {showEpiDetails && (
             <div className="module-panel module-panel-epi epi-details-panel">
-              <div className="module-panel-header">
-                <h3>EPI Module</h3>
-                <span>Single-dose and multi-dose vaccine course completion</span>
+              <div className="module-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h3 style={{ margin: 0, marginBottom: '0.2rem' }}>EPI Module</h3>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Single-dose and multi-dose vaccine course completion</span>
+                </div>
+                <button type="button" className="secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => setShowEpiDetails(false)}>
+                  ✕ Close
+                </button>
               </div>
               <div className="epi-overview-panel">
                 <h3>Expanded Program on Immunization</h3>
@@ -831,27 +887,54 @@ export default function App() {
           )}
 
           <div className="dashboard-grid">
-            <div className="card" style={{ textAlign: 'center' }}>
-              <h2>💉 Overall EPI Rate</h2>
-              <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
-                <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
-                  <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                  <circle 
-                    cx="18" cy="18" r="16" fill="none" stroke="var(--primary)" strokeWidth="3" 
-                    strokeDasharray={`${overallEpiRate} 100`}
-                  />
-                </svg>
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{overallEpiRate}%</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>COMPLETED</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="card" style={{ textAlign: 'center', margin: 0 }}>
+                <h2>💉 Overall EPI Rate</h2>
+                <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
+                  <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                    <circle 
+                      cx="18" cy="18" r="16" fill="none" stroke="var(--primary)" strokeWidth="3" 
+                      strokeDasharray={`${overallEpiRate} 100`}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{overallEpiRate}%</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>COMPLETED</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', fontSize: '0.8rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ width: '12px', height: '12px', background: 'var(--primary)', borderRadius: '2px' }}></div> Completed
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ width: '12px', height: '12px', background: '#e2e8f0', borderRadius: '2px' }}></div> Pending
+                  </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', fontSize: '0.8rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <div style={{ width: '12px', height: '12px', background: 'var(--primary)', borderRadius: '2px' }}></div> Completed
+
+              <div className="card" style={{ textAlign: 'center', margin: 0 }}>
+                <h2>🐕 Bite Treatment Rate</h2>
+                <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
+                  <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#fee2e2" strokeWidth="3" />
+                    <circle 
+                      cx="18" cy="18" r="16" fill="none" stroke="#dc2626" strokeWidth="3" 
+                      strokeDasharray={`${stats.animalBiteTreatmentRate} 100`}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.animalBiteTreatmentRate}%</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>TREATED</div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <div style={{ width: '12px', height: '12px', background: '#e2e8f0', borderRadius: '2px' }}></div> Pending
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', fontSize: '0.8rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ width: '12px', height: '12px', background: '#dc2626', borderRadius: '2px' }}></div> Treated
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ width: '12px', height: '12px', background: '#fee2e2', borderRadius: '2px' }}></div> Pending
+                  </div>
                 </div>
               </div>
             </div>
@@ -937,9 +1020,9 @@ export default function App() {
       )}
 
       {activeTab === 'patients' && (
-        <div className="dashboard-grid">
-          <section className="card">
-            <h2>{editingId ? "Edit Profile" : "Register Patient"}</h2>
+        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <section ref={formRef} className="card" style={{ margin: 0 }}>
+            <h2>{editingId ? "Edit Profile & Clinical Log" : "Register Patient"}</h2>
             <form onSubmit={savePatient} className="form-grid">
               <div className="input-group">
                 <label>Full Name</label>
@@ -976,144 +1059,115 @@ export default function App() {
                   ))}
                 </datalist>
               </div>
-              <button className="primary">{editingId ? "Update" : "Register"}</button>
-              {editingId && <button type="button" className="secondary" onClick={() => {setEditingId(null); setPatientForm(initialPatientForm)}}>Cancel</button>}
+              <hr style={{ margin: '1.5rem 0', borderTop: '1px solid var(--border)' }} />
+              <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+                <label>Add Clinical Activity (Optional)</label>
+                <div style={{ display: 'flex', gap: '1.5rem' }}>
+                  <label className="radio-label">
+                    <input type="radio" checked={logType === 'none'} onChange={() => setLogType('none')} /> None
+                  </label>
+                  <label className="radio-label">
+                    <input type="radio" checked={logType === 'epi'} onChange={() => setLogType('epi')} /> EPI (Immunization)
+                  </label>
+                  <label className="radio-label">
+                    <input type="radio" checked={logType === 'bite'} onChange={() => setLogType('bite')} /> Animal Bite Incident
+                  </label>
+                </div>
+              </div>
+
+              {logType === 'bite' && (
+                <div style={{ padding: '1.25rem', background: '#f8fafc', borderLeft: '4px solid var(--primary)', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Animal Type</label>
+                      <select name="animal" value={biteAnimalType} onChange={e => setBiteAnimalType(e.target.value)} required>
+                        <option value="Dog">Dog</option>
+                        <option value="Cat">Cat</option>
+                        <option value="Rat">Rat</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label>Incident Date</label>
+                      <input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                    </div>
+                  </div>
+                  {biteAnimalType === "Other" && (
+                    <div className="input-group">
+                      <label>Specify Animal</label>
+                      <input name="otherAnimal" placeholder="Type animal name" required />
+                    </div>
+                  )}
+                  <div className="input-group">
+                    <label>Incident Type</label>
+                    <select name="exposure" required>
+                      <option value="Bitten">Bitten</option>
+                      <option value="Scratched">Scratched</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Treatment Protocol</label>
+                    <select name="protocol" required>
+                      {Object.keys(BITE_PROTOCOLS).map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {logType === 'epi' && (
+                <div style={{ padding: '1.25rem', background: '#f8fafc', borderLeft: '4px solid var(--primary)', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Vaccine Name</label>
+                      <select name="vaccine" required>
+                        <option value="">Select Vaccine...</option>
+                        {VACCINE_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label>Dose Number</label>
+                      <input type="number" name="dose" defaultValue="1" min="1" required />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Scheduled Date</label>
+                    <input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                <button type="submit" className="primary">{editingId ? "Save Changes" : "Register Patient"}</button>
+                {editingId && <button type="button" className="secondary" onClick={() => {setEditingId(null); setPatientForm(initialPatientForm); setLogType('none');}}>Cancel</button>}
+              </div>
             </form>
           </section>
 
-          <section className="card">
-            <h2>Patient Registry List</h2>
+          <section className="card" style={{ margin: 0 }}>
+            <h2>General Patient Registry</h2>
             <div className="data-list">
               {patients.map(p => (
                 <div key={p.id} className="data-item">
                   <div className="data-main">
                     <span className="data-title">{p.full_name}</span>
                     <span className="data-sub">{p.barangay} • {p.date_of_birth}</span>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                      <button className="primary" style={{ flex: 1, padding: '0.6rem' }} onClick={() => { setSelectedPatientForLog(p); setLogType('epi'); }}>+ Log Clinical Activity</button>
-                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="secondary" style={{ padding: '0.4rem 0.8rem' }} onClick={() => {setEditingId(p.id); setPatientForm(p)}}>Edit</button>
-                    <button className="secondary" style={{ padding: '0.4rem 0.8rem', borderColor: '#ef4444', color: '#ef4444' }} onClick={async () => { if(confirm("Delete patient?")) { await deletePatient(p.id); loadAllData(); } }}>Delete</button>
+                    <button className="primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => { setEditingId(p.id); setPatientForm(p); setLogType('epi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>+ Generate Sched / History</button>
+                    <button className="secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: '#ef4444', color: '#ef4444' }} onClick={async () => { if(confirm("Delete patient?")) { await deletePatient(p.id); loadAllData(); } }}>Delete</button>
                   </div>
                 </div>
               ))}
-
-              {selectedPatientForLog && (
-                <div className="card" style={{ marginTop: '2rem', border: '2px solid var(--primary)', background: '#f8fafc' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h2 style={{ margin: 0 }}>📋 Clinical Log for {selectedPatientForLog.full_name}</h2>
-                    <button className="secondary" onClick={() => setSelectedPatientForLog(null)}>Close</button>
-                  </div>
-                  
-                  <div className="input-group" style={{ marginBottom: '1.5rem' }}>
-                    <label>Activity Type</label>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <label className="radio-label">
-                        <input type="radio" checked={logType === 'epi'} onChange={() => setLogType('epi')} /> EPI (Immunization)
-                      </label>
-                      <label className="radio-label">
-                        <input type="radio" checked={logType === 'bite'} onChange={() => setLogType('bite')} /> Animal Bite Incident
-                      </label>
-                    </div>
-                  </div>
-
-                  {logType === 'bite' && (
-                    <form className="form-grid" onSubmit={async (e) => {
-                      e.preventDefault();
-                      const fd = new FormData(e.target);
-                      const selectedAnimal = fd.get("animal");
-                      const customAnimal = String(fd.get("otherAnimal") || "").trim();
-                      const animalType = selectedAnimal === "Other" ? customAnimal : selectedAnimal;
-                      await generateBiteSchedule(selectedPatientForLog.id, animalType, fd.get("date"), fd.get("protocol"), fd.get("exposure"));
-                      setSelectedPatientForLog(null);
-                      setBiteAnimalType("Dog");
-                      loadAllData();
-                    }}>
-                      <div className="input-row">
-                        <div className="input-group">
-                          <label>Animal Type</label>
-                          <select name="animal" value={biteAnimalType} onChange={e => setBiteAnimalType(e.target.value)} required>
-                            <option value="Dog">Dog</option>
-                            <option value="Cat">Cat</option>
-                            <option value="Rat">Rat</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-                        <div className="input-group">
-                          <label>Incident Date</label>
-                          <input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                        </div>
-                      </div>
-                      {biteAnimalType === "Other" && (
-                        <div className="input-group">
-                          <label>Specify Animal</label>
-                          <input name="otherAnimal" placeholder="Type animal name" required />
-                        </div>
-                      )}
-                      <div className="input-group">
-                        <label>Incident Type</label>
-                        <select name="exposure" required>
-                          <option value="Bitten">Bitten</option>
-                          <option value="Scratched">Scratched</option>
-                        </select>
-                      </div>
-                      <div className="input-group">
-                        <label>Treatment Protocol</label>
-                        <select name="protocol" required>
-                          {Object.keys(BITE_PROTOCOLS).map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
-                      </div>
-                      <button className="primary">Generate Treatment Schedule</button>
-                    </form>
-                  )}
-
-                  {logType === 'epi' && (
-                    <form className="form-grid" onSubmit={async (e) => {
-                      e.preventDefault();
-                      const fd = new FormData(e.target);
-                      await createImmunization({
-                        patient_id: selectedPatientForLog.id,
-                        vaccine_name: fd.get("vaccine"),
-                        dose_number: parseInt(fd.get("dose")),
-                        scheduled_date: fd.get("date"),
-                        status: 'pending'
-                      });
-                      loadAllData();
-                      setSelectedPatientForLog(null);
-                    }}>
-                      <div className="input-row">
-                        <div className="input-group">
-                          <label>Vaccine Name</label>
-                          <select name="vaccine" required>
-                            <option value="">Select Vaccine...</option>
-                            {VACCINE_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
-                        </div>
-                        <div className="input-group">
-                          <label>Dose Number</label>
-                          <input type="number" name="dose" defaultValue="1" min="1" required />
-                        </div>
-                      </div>
-                      <div className="input-group">
-                        <label>Scheduled Date</label>
-                        <input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                      </div>
-                      <button className="primary">Add to Immunization Schedule</button>
-                    </form>
-                  )}
-                </div>
-              )}
             </div>
           </section>
         </div>
       )}
 
       {activeTab === 'registry' && (
-        <section>
-          <div className="registry-flow-header">
-            <h2>Registry List (Active Patients)</h2>
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div>
+            <div className="registry-flow-header">
+              <h2>Clinical Registries (Active Cases)</h2>
             <span>Grouped into Animal Bite and EPI with Status and Hx sections</span>
           </div>
           <div className="dashboard-grid">
@@ -1131,12 +1185,12 @@ export default function App() {
                       <span className="data-sub">Status: {b.doses_administered}/{b.total_required_doses} doses</span>
                       <span className="data-sub" style={{ fontSize: '0.75rem' }}>Hx: {b.animal_type} bite ({b.incident_date})</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
                       {b.treatment_status !== 'completed' && (
                         <button
                           className="primary"
-                          style={{ padding: '0.35rem 0.7rem' }}
+                          style={{ padding: '0.35rem 0.7rem', fontSize: '0.75rem' }}
                           onClick={async () => {
                             await updateAnimalBite(b.id, { treatment_status: 'completed' });
                             loadAllData();
@@ -1145,6 +1199,13 @@ export default function App() {
                           Mark Completed
                         </button>
                       )}
+                      <button 
+                        className="secondary" 
+                        style={{ padding: '0.35rem 0.7rem', fontSize: '0.75rem', borderColor: '#ef4444', color: '#ef4444' }}
+                        onClick={async () => { if(confirm("Delete this record?")) { await deleteAnimalBite(b.id); loadAllData(); } }}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1165,7 +1226,16 @@ export default function App() {
                         {b.animal_type} • Incident: {b.incident_date}
                       </span>
                     </div>
-                    <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
+                      <button 
+                        className="secondary" 
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
+                        onClick={async () => { if(confirm("Delete this history record?")) { await deleteAnimalBite(b.id); loadAllData(); } }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {registryAnimalBiteHistory.length === 0 && (
@@ -1196,10 +1266,19 @@ export default function App() {
                           Status: Scheduled for {imm.scheduled_date}
                         </span>
                       </div>
-                      <button className="primary" style={{ padding: '0.4rem 0.8rem' }} onClick={async () => {
-                        await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
-                        loadAllData();
-                      }}>Mark Done</button>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <button className="primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={async () => {
+                          await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
+                          loadAllData();
+                        }}>Mark Done</button>
+                        <button 
+                          className="secondary" 
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderColor: '#ef4444', color: '#ef4444' }}
+                          onClick={async () => { if(confirm("Delete this record?")) { await deleteImmunization(imm.id); loadAllData(); } }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1220,7 +1299,16 @@ export default function App() {
                         {imm.vaccine_name} (# {imm.dose_number}) • Completed: {imm.administered_date || imm.scheduled_date}
                       </span>
                     </div>
-                    <span className="badge badge-completed">completed</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span className="badge badge-completed">completed</span>
+                      <button 
+                        className="secondary" 
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
+                        onClick={async () => { if(confirm("Delete this history record?")) { await deleteImmunization(imm.id); loadAllData(); } }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {registryEpiHistory.length === 0 && (
@@ -1228,6 +1316,7 @@ export default function App() {
                 )}
               </div>
             </div>
+          </div>
           </div>
         </section>
       )}
