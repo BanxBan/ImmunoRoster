@@ -212,6 +212,9 @@ function getExposureType(bite = {}) {
   const source = `${bite.severity_category || ""} ${bite.notes || ""} ${bite.animal_type || ""}`.toLowerCase();
   return source.includes("scratch") ? "scratched" : "bitten";
 }
+function isAntiRabiesImmunization(imm = {}) {
+  return String(imm.vaccine_name || "").toLowerCase().includes("anti-rabies");
+}
 
 function getAgeFromDateOfBirth(dateOfBirth) {
   if (!dateOfBirth) return null;
@@ -763,6 +766,7 @@ export default function App() {
   }, [animalBites]);
   const registryEpiActive = useMemo(() => {
     const pending = [...immunizations]
+      .filter((i) => !isAntiRabiesImmunization(i))
       .filter(i => i.status !== 'completed')
       .sort((a, b) => new Date(a.scheduled_date || "2999-12-31") - new Date(b.scheduled_date || "2999-12-31"));
 
@@ -789,6 +793,7 @@ export default function App() {
   }, [immunizations, patientById]);
   const registryEpiHistory = useMemo(() => {
     return [...immunizations]
+      .filter((i) => !isAntiRabiesImmunization(i))
       .filter(i => i.status === 'completed')
       .sort((a, b) => new Date(b.administered_date || b.scheduled_date) - new Date(a.administered_date || a.scheduled_date))
       .slice(0, 12);
@@ -816,6 +821,7 @@ export default function App() {
   const selectedRegistryRecentDoses = useMemo(() => {
     if (!selectedRegistryHistoryPatientId) return [];
     return [...immunizations]
+      .filter((i) => !isAntiRabiesImmunization(i))
       .filter(i => i.patient_id === selectedRegistryHistoryPatientId)
       .sort((a, b) => new Date(b.administered_date || b.scheduled_date) - new Date(a.administered_date || a.scheduled_date))
       .slice(0, 8);
