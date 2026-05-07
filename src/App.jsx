@@ -208,6 +208,7 @@ export default function App() {
   const [biteAnimalType, setBiteAnimalType] = useState("Dog");
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
   const [selectedHistoryPatientId, setSelectedHistoryPatientId] = useState(null);
+  const [selectedRegistryHistoryPatientId, setSelectedRegistryHistoryPatientId] = useState(null);
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -638,6 +639,17 @@ export default function App() {
       .filter(b => b.patient_id === selectedHistoryPatientId)
       .sort((a, b) => new Date(b.incident_date) - new Date(a.incident_date));
   }, [animalBites, selectedHistoryPatientId]);
+  const selectedRegistryHistoryPatient = useMemo(
+    () => patients.find(p => p.id === selectedRegistryHistoryPatientId) || null,
+    [patients, selectedRegistryHistoryPatientId]
+  );
+  const selectedRegistryRecentDoses = useMemo(() => {
+    if (!selectedRegistryHistoryPatientId) return [];
+    return [...immunizations]
+      .filter(i => i.patient_id === selectedRegistryHistoryPatientId)
+      .sort((a, b) => new Date(b.administered_date || b.scheduled_date) - new Date(a.administered_date || a.scheduled_date))
+      .slice(0, 8);
+  }, [immunizations, selectedRegistryHistoryPatientId]);
   const patientAge = getAgeFromDateOfBirth(patientForm.date_of_birth);
   const isMinorPatient = patientAge !== null && patientAge < 18;
 
@@ -1108,7 +1120,7 @@ export default function App() {
       )}
 
       {activeTab === 'patients' && (
-        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="patients-layout">
           <section ref={formRef} className="card" style={{ margin: 0 }}>
             <h2>{editingId ? "Edit Profile & Clinical Log" : "Register Patient"}</h2>
             <form onSubmit={savePatient} className="form-grid">
@@ -1148,9 +1160,9 @@ export default function App() {
                 </datalist>
               </div>
               <hr style={{ margin: '1.5rem 0', borderTop: '1px solid var(--border)' }} />
-              <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+              <div className="input-group activity-selector">
                 <label>Add Clinical Activity (Optional)</label>
-                <div style={{ display: 'flex', gap: '1.5rem' }}>
+                <div className="activity-options">
                   <label className="radio-label">
                     <input type="radio" checked={logType === 'none'} onChange={() => setLogType('none')} /> None
                   </label>
@@ -1164,7 +1176,7 @@ export default function App() {
               </div>
 
               {logType === 'bite' && (
-                <div style={{ padding: '1.25rem', background: '#f8fafc', borderLeft: '4px solid var(--primary)', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                <div className="clinical-panel clinical-panel-bite">
                   <div className="input-row">
                     <div className="input-group">
                       <label>Registration No.</label>
@@ -1279,7 +1291,7 @@ export default function App() {
                     <div className="input-group"><label>D7</label><input type="date" name="scheduleD7" /></div>
                     <div className="input-group"><label>D28</label><input type="date" name="scheduleD28" /></div>
                   </div>
-                  <div className="input-group" style={{ marginTop: '0.75rem' }}>
+                  <div className="input-group consent-section">
                     <label>Consent for Treatment</label>
                     {isMinorPatient ? (
                       <>
@@ -1304,7 +1316,7 @@ export default function App() {
                         I allow and consent to receive treatment.
                       </label>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                    <div className="consent-hint">
                       {patientAge === null
                         ? "Set DOB to auto-detect if guardian consent is required."
                         : `Patient age detected: ${patientAge} (${isMinorPatient ? "Minor" : "Adult"})`}
@@ -1314,7 +1326,7 @@ export default function App() {
               )}
 
               {logType === 'epi' && (
-                <div style={{ padding: '1.25rem', background: '#f8fafc', borderLeft: '4px solid var(--primary)', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                <div className="clinical-panel clinical-panel-epi">
                   <div className="input-row">
                     <div className="input-group">
                       <label>Vaccine Name</label>
@@ -1335,7 +1347,7 @@ export default function App() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+              <div className="form-actions">
                 <button type="submit" className="primary">{editingId ? "Save Changes" : "Register Patient"}</button>
                 {editingId && <button type="button" className="secondary" onClick={() => {setEditingId(null); setPatientForm(initialPatientForm); setLogType('none');}}>Cancel</button>}
               </div>
@@ -1351,28 +1363,27 @@ export default function App() {
                     <span className="data-title">{p.full_name}</span>
                     <span className="data-sub">{p.barangay} • {p.date_of_birth}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => { setEditingId(p.id); setPatientForm(p); setLogType('epi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>+ Generate Sched</button>
+                  <div className="patient-actions">
+                    <button className="primary action-btn" onClick={() => { setEditingId(p.id); setPatientForm(p); setLogType('epi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>+ Generate Sched</button>
                     <button
-                      className="secondary"
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                      className="secondary action-btn"
                       onClick={() => {
                         setSelectedHistoryPatientId(prev => prev === p.id ? null : p.id);
                       }}
                     >
                       {selectedHistoryPatientId === p.id ? "Hide History" : "History"}
                     </button>
-                    <button className="secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: '#ef4444', color: '#ef4444' }} onClick={async () => { if(confirm("Delete patient?")) { await deletePatient(p.id); loadAllData(); } }}>Delete</button>
+                    <button className="secondary action-btn action-btn-danger" onClick={async () => { if(confirm("Delete patient?")) { await deletePatient(p.id); loadAllData(); } }}>Delete</button>
                   </div>
                 </div>
               ))}
             </div>
             {selectedHistoryPatient && (
-              <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                <h3 style={{ marginTop: 0 }}>History: {selectedHistoryPatient.full_name}</h3>
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+              <div className="patient-history-panel">
+                <h3>History: {selectedHistoryPatient.full_name}</h3>
+                <div className="patient-history-grid">
                   <div>
-                    <h4 style={{ margin: '0 0 0.5rem 0' }}>Vaccine History</h4>
+                    <h4 className="patient-history-title">Vaccine History</h4>
                     <div className="data-list">
                       {selectedPatientImmunizationHistory.map(imm => (
                         <div key={`patient-history-imm-${imm.id}`} className="data-item">
@@ -1388,7 +1399,7 @@ export default function App() {
                     </div>
                   </div>
                   <div>
-                    <h4 style={{ margin: '0 0 0.5rem 0' }}>Animal Bite Treatment History</h4>
+                    <h4 className="patient-history-title">Animal Bite Treatment History</h4>
                     <div className="data-list">
                       {selectedPatientBiteHistory.map(bite => (
                         <div key={`patient-history-bite-${bite.id}`} className="data-item">
@@ -1417,6 +1428,26 @@ export default function App() {
               <h2>Clinical Registries (Active Cases)</h2>
             <span>Grouped into Animal Bite and EPI with Status and Hx sections</span>
           </div>
+          {selectedRegistryHistoryPatient && (
+            <div className="patient-history-panel" style={{ marginBottom: '1rem' }}>
+              <h3>Recent Doses: {selectedRegistryHistoryPatient.full_name}</h3>
+              <div className="data-list">
+                {selectedRegistryRecentDoses.map(dose => (
+                  <div key={`registry-dose-${dose.id}`} className="data-item">
+                    <div className="data-main">
+                      <span className="data-title">{dose.vaccine_name} (Dose {dose.dose_number})</span>
+                      <span className="data-sub">Scheduled: {dose.scheduled_date || "N/A"}</span>
+                      <span className="data-sub">Administered: {dose.administered_date || "Not yet"}</span>
+                    </div>
+                    <span className={`badge badge-${dose.status}`}>{dose.status}</span>
+                  </div>
+                ))}
+                {selectedRegistryRecentDoses.length === 0 && (
+                  <p className="registry-empty">No dose records for this patient yet.</p>
+                )}
+              </div>
+            </div>
+          )}
           <div className="dashboard-grid">
             <div className="card registry-card registry-card-bite">
               <h2>🐕 Animal Bite</h2>
@@ -1432,12 +1463,11 @@ export default function App() {
                       <span className="data-sub">Status: {b.doses_administered}/{b.total_required_doses} doses</span>
                       <span className="data-sub" style={{ fontSize: '0.75rem' }}>Hx: {b.animal_type} bite ({b.incident_date})</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div className="registry-row-actions">
                       <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
                       {b.treatment_status !== 'completed' && (
                         <button
-                          className="primary"
-                          style={{ padding: '0.35rem 0.7rem', fontSize: '0.75rem' }}
+                          className="primary registry-action-btn"
                           onClick={async () => {
                             await updateAnimalBite(b.id, { treatment_status: 'completed' });
                             loadAllData();
@@ -1446,9 +1476,16 @@ export default function App() {
                           Mark Completed
                         </button>
                       )}
+                      <button
+                        className="secondary registry-action-btn"
+                        onClick={() => {
+                          setSelectedRegistryHistoryPatientId(prev => prev === b.patient_id ? null : b.patient_id);
+                        }}
+                      >
+                        {selectedRegistryHistoryPatientId === b.patient_id ? "Hide History" : "History"}
+                      </button>
                       <button 
-                        className="secondary" 
-                        style={{ padding: '0.35rem 0.7rem', fontSize: '0.75rem', borderColor: '#ef4444', color: '#ef4444' }}
+                        className="secondary registry-action-btn action-btn-danger"
                         onClick={async () => { if(confirm("Delete this record?")) { await deleteAnimalBite(b.id); loadAllData(); } }}
                       >
                         Delete
@@ -1513,14 +1550,14 @@ export default function App() {
                           Status: Scheduled for {imm.scheduled_date}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        <button className="primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={async () => {
+                      <div className="registry-row-actions">
+                        <span className={`badge badge-${imm.status}`}>{imm.status}</span>
+                        <button className="primary registry-action-btn" onClick={async () => {
                           await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
                           loadAllData();
                         }}>Mark Done</button>
                         <button 
-                          className="secondary" 
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderColor: '#ef4444', color: '#ef4444' }}
+                          className="secondary registry-action-btn action-btn-danger"
                           onClick={async () => { if(confirm("Delete this record?")) { await deleteImmunization(imm.id); loadAllData(); } }}
                         >
                           Delete

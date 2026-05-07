@@ -697,6 +697,58 @@ header h1 {
   gap: 1.5rem;
 }
 
+.patients-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin: 0 auto;
+  max-width: 1040px;
+  width: 100%;
+}
+
+.activity-selector {
+  margin-bottom: 1.5rem;
+}
+
+.activity-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+}
+
+.clinical-panel {
+  background: #f8fafc;
+  border-left: 4px solid var(--primary);
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+}
+
+.clinical-panel-bite {
+  border-left-color: #2563eb;
+}
+
+.clinical-panel-epi {
+  border-left-color: #4f46e5;
+}
+
+.consent-section {
+  margin-top: 0.75rem;
+}
+
+.consent-hint {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
 .input-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -814,6 +866,61 @@ button.secondary:hover {
 .data-sub {
   font-size: 0.875rem;
   color: var(--text-muted);
+}
+
+.patient-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  font-size: 0.85rem;
+  padding: 0.5rem 0.9rem;
+}
+
+.action-btn-danger {
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+}
+
+.patient-history-panel {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.patient-history-panel h3 {
+  font-size: 1.05rem;
+  margin: 0 0 0.8rem 0;
+}
+
+.patient-history-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.patient-history-title {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.registry-row-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.registry-action-btn {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.7rem;
 }
 
 .error-toast {
@@ -986,6 +1093,24 @@ button.secondary:hover {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .patient-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
+  .patient-history-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registry-row-actions {
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .module-panel-header {
