@@ -1721,12 +1721,6 @@ export default function App() {
                       >
                         {selectedRegistryHistoryPatientId === b.patient_id ? "Hide History" : "History"}
                       </button>
-                      <button 
-                        className="secondary registry-action-btn action-btn-danger"
-                        onClick={async () => { if(confirm("Delete this record?")) { await deleteAnimalBite(b.id); loadAllData(); } }}
-                      >
-                        Delete
-                      </button>
                     </div>
                   </div>
                 ))}
