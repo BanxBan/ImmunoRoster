@@ -245,6 +245,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("census");
   const [loginForm, setLoginForm] = useState({ identifier: "", password: "" });
   const [loggingIn, setLoggingIn] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [confirmWorking, setConfirmWorking] = useState(false);
   
   const [patients, setPatients] = useState([]);
   const [immunizations, setImmunizations] = useState([]);
@@ -860,6 +862,16 @@ export default function App() {
     setShowHeaderNotifications(false);
     setActiveTab("registry");
     if (item?.patient_id) setSelectedRegistryHistoryPatientId(item.patient_id);
+  }
+
+  function openConfirmDialog({
+    title = "Confirm delete",
+    message = "Are you sure you want to delete this item?",
+    confirmText = "Delete",
+    cancelText = "Cancel",
+    onConfirm
+  }) {
+    setConfirmDialog({ title, message, confirmText, cancelText, onConfirm });
   }
 
   if (!adminUser) {
@@ -1680,7 +1692,22 @@ export default function App() {
                     >
                       {selectedHistoryPatientId === p.id ? "Hide History" : "History"}
                     </button>
-                    <button className="secondary action-btn action-btn-danger" onClick={async () => { if(confirm("Delete patient?")) { await deletePatient(p.id); loadAllData(); } }}>Delete</button>
+                    <button
+                      className="secondary action-btn action-btn-danger"
+                      onClick={() => {
+                        openConfirmDialog({
+                          title: "Delete patient?",
+                          message: "This will permanently remove this patient record.",
+                          confirmText: "Delete",
+                          onConfirm: async () => {
+                            await deletePatient(p.id);
+                            loadAllData();
+                          }
+                        });
+                      }}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1796,7 +1823,17 @@ export default function App() {
                       <button 
                         className="secondary" 
                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
-                        onClick={async () => { if(confirm("Delete this history record?")) { await deleteAnimalBite(b.id); loadAllData(); } }}
+                        onClick={() => {
+                          openConfirmDialog({
+                            title: "Delete animal bite record?",
+                            message: "This will permanently remove this animal bite history record.",
+                            confirmText: "Delete",
+                            onConfirm: async () => {
+                              await deleteAnimalBite(b.id);
+                              loadAllData();
+                            }
+                          });
+                        }}
                       >
                         Delete
                       </button>
@@ -1845,7 +1882,17 @@ export default function App() {
                         </button> */}
                         <button 
                           className="secondary registry-action-btn action-btn-danger"
-                          onClick={async () => { if(confirm("Delete this record?")) { await deleteImmunization(imm.id); loadAllData(); } }}
+                          onClick={() => {
+                            openConfirmDialog({
+                              title: "Delete immunization record?",
+                              message: "This will permanently remove this immunization record.",
+                              confirmText: "Delete",
+                              onConfirm: async () => {
+                                await deleteImmunization(imm.id);
+                                loadAllData();
+                              }
+                            });
+                          }}
                         >
                           Delete
                         </button>
@@ -1874,7 +1921,17 @@ export default function App() {
                       <button 
                         className="secondary" 
                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
-                        onClick={async () => { if(confirm("Delete this history record?")) { await deleteImmunization(imm.id); loadAllData(); } }}
+                        onClick={() => {
+                          openConfirmDialog({
+                            title: "Delete immunization history?",
+                            message: "This will permanently remove this completed immunization history record.",
+                            confirmText: "Delete",
+                            onConfirm: async () => {
+                              await deleteImmunization(imm.id);
+                              loadAllData();
+                            }
+                          });
+                        }}
                       >
                         Delete
                       </button>
@@ -1922,6 +1979,50 @@ export default function App() {
           )}
           </div>
         </section>
+      )}
+
+      {confirmDialog && (
+        <div
+          className="registry-modal-backdrop"
+          onClick={() => (confirmWorking ? null : setConfirmDialog(null))}
+        >
+          <div className="registry-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="registry-modal-header">
+              <h3 style={{ marginBottom: "0.25rem" }}>{confirmDialog.title}</h3>
+              <span className="data-sub">{confirmDialog.message}</span>
+            </div>
+            <div
+              className="registry-modal-actions"
+              style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}
+            >
+              <button
+                className="secondary"
+                disabled={confirmWorking}
+                onClick={() => setConfirmDialog(null)}
+              >
+                {confirmDialog.cancelText || "Cancel"}
+              </button>
+              <button
+                className="primary"
+                style={{ background: "#ef4444", borderColor: "#ef4444" }}
+                disabled={confirmWorking}
+                onClick={async () => {
+                  setConfirmWorking(true);
+                  try {
+                    await confirmDialog.onConfirm?.();
+                    setConfirmDialog(null);
+                  } catch (err) {
+                    setError(err?.message || "Delete failed.");
+                  } finally {
+                    setConfirmWorking(false);
+                  }
+                }}
+              >
+                {confirmWorking ? "Deleting..." : (confirmDialog.confirmText || "Delete")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
