@@ -47,6 +47,13 @@ create table if not exists public.patients (
   date_of_birth date not null,
   sex text,
   contact_number text,
+  place_of_birth text,
+  mother_name text,
+  father_name text,
+  birth_height text,
+  birth_weight text,
+  health_center text,
+  family_no text,
   barangay text,
   municipality text,
   address text,
@@ -57,6 +64,13 @@ create table if not exists public.patients (
 alter table public.patients add column if not exists patient_code text;
 alter table public.patients add column if not exists barangay text;
 alter table public.patients add column if not exists municipality text;
+alter table public.patients add column if not exists place_of_birth text;
+alter table public.patients add column if not exists mother_name text;
+alter table public.patients add column if not exists father_name text;
+alter table public.patients add column if not exists birth_height text;
+alter table public.patients add column if not exists birth_weight text;
+alter table public.patients add column if not exists health_center text;
+alter table public.patients add column if not exists family_no text;
 update public.patients
 set patient_code = ('PAT-' || upper(substr(replace(id::text, '-', ''), 1, 10)))
 where patient_code is null;

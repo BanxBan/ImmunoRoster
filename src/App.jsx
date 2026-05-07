@@ -235,6 +235,13 @@ const initialPatientForm = {
   date_of_birth: "",
   sex: "",
   contact_number: "",
+  place_of_birth: "",
+  mother_name: "",
+  father_name: "",
+  birth_height: "",
+  birth_weight: "",
+  health_center: "",
+  family_no: "",
   barangay: "",
   municipality: "",
   address: ""
@@ -247,6 +254,9 @@ export default function App() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [confirmWorking, setConfirmWorking] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [showSendReminders, setShowSendReminders] = useState(false);
+  const [sendingReminders, setSendingReminders] = useState(false);
   
   const [patients, setPatients] = useState([]);
   const [immunizations, setImmunizations] = useState([]);
@@ -310,6 +320,12 @@ export default function App() {
   useEffect(() => {
     loadAllData();
   }, [adminUser]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => {
     setShowBiteDetails(false);
@@ -436,9 +452,15 @@ export default function App() {
         full_name: patientForm.full_name,
         date_of_birth: patientForm.date_of_birth,
         sex: patientForm.sex,
+        place_of_birth: patientForm.place_of_birth,
+        mother_name: patientForm.mother_name,
+        father_name: patientForm.father_name,
+        birth_height: patientForm.birth_height,
+        birth_weight: patientForm.birth_weight,
+        health_center: patientForm.health_center,
+        family_no: patientForm.family_no,
         barangay: patientForm.barangay,
         municipality: patientForm.municipality,
-        province: patientForm.province,
         contact_number: patientForm.contact_number,
         address: patientForm.address
       };
@@ -854,6 +876,35 @@ export default function App() {
         dateLabel: imm.scheduled_date
       }));
   }, [immunizations, patientById]);
+  const todayISO = new Date().toISOString().split("T")[0];
+  const dueTodayReminderItems = useMemo(() => {
+    return reminderItems.filter((r) => r.level !== "upcoming" ? false : r.dateLabel === todayISO);
+  }, [reminderItems, todayISO]);
+  const dueTodayPatients = useMemo(() => {
+    const byPatient = new Map();
+    dueTodayReminderItems.forEach((item) => {
+      const pid = item.patient_id || "unknown";
+      if (!byPatient.has(pid)) {
+        const p = patientById[item.patient_id] || {};
+        byPatient.set(pid, {
+          patient_id: item.patient_id,
+          name: item.title,
+          contact_number: p.contact_number || "",
+          items: []
+        });
+      }
+      byPatient.get(pid).items.push(item);
+    });
+    return [...byPatient.values()].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  }, [dueTodayReminderItems, patientById]);
+  const sendRemindersStorageKey = `immunoroster_reminders_sent_${todayISO}`;
+  const alreadySentRemindersToday = useMemo(() => {
+    try {
+      return localStorage.getItem(sendRemindersStorageKey) === "1";
+    } catch {
+      return false;
+    }
+  }, [sendRemindersStorageKey]);
   const notificationCount = reminderItems.filter(r => r.level === "overdue").length || reminderItems.length;
   const patientAge = getAgeFromDateOfBirth(patientForm.date_of_birth);
   const isMinorPatient = patientAge !== null && patientAge < 18;
@@ -875,6 +926,31 @@ export default function App() {
     onConfirm
   }) {
     setConfirmDialog({ title, message, confirmText, cancelText, onConfirm });
+  }
+
+  async function handleSendReminders() {
+    if (sendingReminders) return;
+    if (alreadySentRemindersToday) {
+      setToast({ type: "info", message: "Reminders already sent today." });
+      return;
+    }
+    if (dueTodayPatients.length === 0) {
+      setToast({ type: "info", message: "No patients due today." });
+      return;
+    }
+
+    setSendingReminders(true);
+    try {
+      // NOTE: Without an SMS API/provider, we can only "record" sending in the app.
+      // If/when you add an SMS endpoint, call it here with dueTodayPatients payload.
+      localStorage.setItem(sendRemindersStorageKey, "1");
+      setShowSendReminders(false);
+      setToast({ type: "success", message: `Reminders successfully sent to ${dueTodayPatients.length} patient(s).` });
+    } catch (err) {
+      setError(err?.message || "Failed to send reminders.");
+    } finally {
+      setSendingReminders(false);
+    }
   }
 
   if (!adminUser) {
@@ -966,6 +1042,21 @@ export default function App() {
               </div>
             )}
           </div>
+          <div className="notif-wrap">
+            <button
+              type="button"
+              className="notif-btn"
+              onClick={() => {
+                setShowHeaderNotifications(false);
+                setShowSendReminders((prev) => !prev);
+              }}
+              aria-label="Send reminders"
+              title="Send reminders (due today)"
+            >
+              <span className="notif-icon">📩</span>
+              {dueTodayPatients.length > 0 && <span className="notif-count">{dueTodayPatients.length}</span>}
+            </button>
+          </div>
           <button className="secondary" style={{ padding: '0.4rem 1rem' }} onClick={handleLogout}>Sign Out</button>
         </div>
       </header>
@@ -977,6 +1068,19 @@ export default function App() {
       </nav>
 
       {error && <div className="error-toast" onClick={() => setError("")}>{error}</div>}
+      {toast && (
+        <div
+          className="error-toast"
+          onClick={() => setToast(null)}
+          style={{
+            background: toast.type === "success" ? "#dcfce7" : toast.type === "info" ? "#dbeafe" : undefined,
+            borderColor: toast.type === "success" ? "#22c55e" : toast.type === "info" ? "#3b82f6" : undefined,
+            color: toast.type === "success" ? "#166534" : toast.type === "info" ? "#1e40af" : undefined
+          }}
+        >
+          {toast.message}
+        </div>
+      )}
 
       {activeTab === 'census' && (
         <section className="census-modern">
@@ -1465,7 +1569,12 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Date of Birth</label>
-                      <input type="date" value={patientForm.date_of_birth || ""} onChange={e => setPatientForm({...patientForm, date_of_birth: e.target.value})} required />
+                      <input
+                        type="date"
+                        value={patientForm.date_of_birth || ""}
+                        onChange={e => setPatientForm({ ...patientForm, date_of_birth: e.target.value })}
+                        required
+                      />
                     </div>
                     <div className="input-group">
                       <label>Age</label>
@@ -1614,23 +1723,10 @@ export default function App() {
 
               {logType === 'epi' && (
                 <div className="clinical-panel clinical-panel-epi">
-                  <div className="input-group">
-                    <label>Full Name</label>
-                    <input value={patientForm.full_name} onChange={e => setPatientForm({...patientForm, full_name: e.target.value})} required />
-                  </div>
-                  <div className="input-group">
-                    <label>Phone Number (for reminders)</label>
-                    <input
-                      value={patientForm.contact_number || ""}
-                      onChange={e => setPatientForm({ ...patientForm, contact_number: e.target.value })}
-                      placeholder="e.g., 09xxxxxxxxx"
-                      inputMode="tel"
-                    />
-                  </div>
                   <div className="input-row">
                     <div className="input-group">
-                      <label>DOB</label>
-                      <input type="date" value={patientForm.date_of_birth} onChange={e => setPatientForm({...patientForm, date_of_birth: e.target.value})} required />
+                      <label>Full Name</label>
+                      <input value={patientForm.full_name} onChange={e => setPatientForm({...patientForm, full_name: e.target.value})} required />
                     </div>
                     <div className="input-group">
                       <label>Sex</label>
@@ -1641,22 +1737,102 @@ export default function App() {
                       </select>
                     </div>
                   </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>DOB</label>
+                      <input type="date" value={patientForm.date_of_birth} onChange={e => setPatientForm({...patientForm, date_of_birth: e.target.value})} required />
+                    </div>
+                    <div className="input-group">
+                      <label>Place of Birth</label>
+                      <input
+                        value={patientForm.place_of_birth || ""}
+                        onChange={e => setPatientForm({ ...patientForm, place_of_birth: e.target.value })}
+                        placeholder="City / hospital"
+                      />
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Mother's Name</label>
+                      <input
+                        value={patientForm.mother_name || ""}
+                        onChange={e => setPatientForm({ ...patientForm, mother_name: e.target.value })}
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label>Father's Name</label>
+                      <input
+                        value={patientForm.father_name || ""}
+                        onChange={e => setPatientForm({ ...patientForm, father_name: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Birth Height</label>
+                      <input
+                        value={patientForm.birth_height || ""}
+                        onChange={e => setPatientForm({ ...patientForm, birth_height: e.target.value })}
+                        placeholder="e.g., 50 cm"
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label>Birth Weight</label>
+                      <input
+                        value={patientForm.birth_weight || ""}
+                        onChange={e => setPatientForm({ ...patientForm, birth_weight: e.target.value })}
+                        placeholder="e.g., 3.2 kg"
+                      />
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Address</label>
+                      <input value={patientForm.address || ""} onChange={e => setPatientForm({...patientForm, address: e.target.value})} />
+                    </div>
+                    <div className="input-group">
+                      <label>Barangay</label>
+                      <input 
+                        list="barangay-list"
+                        value={patientForm.barangay} 
+                        onChange={e => setPatientForm({...patientForm, barangay: e.target.value})} 
+                        placeholder="Select or type new..."
+                      />
+                      <datalist id="barangay-list">
+                        {Array.from(new Set([
+                          ...globalStats.patients.map(p => p.barangay),
+                          ...globalStats.community.map(c => c.barangay)
+                        ])).filter(Boolean).sort().map(b => (
+                          <option key={b} value={b} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Health Center</label>
+                      <input
+                        value={patientForm.health_center || ""}
+                        onChange={e => setPatientForm({ ...patientForm, health_center: e.target.value })}
+                        placeholder="Name of health center"
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label>Family No.</label>
+                      <input
+                        value={patientForm.family_no || ""}
+                        onChange={e => setPatientForm({ ...patientForm, family_no: e.target.value })}
+                      />
+                    </div>
+                  </div>
                   <div className="input-group">
-                    <label>Barangay</label>
-                    <input 
-                      list="barangay-list"
-                      value={patientForm.barangay} 
-                      onChange={e => setPatientForm({...patientForm, barangay: e.target.value})} 
-                      placeholder="Select or type new..."
+                    <label>Phone Number (for reminders)</label>
+                    <input
+                      value={patientForm.contact_number || ""}
+                      onChange={e => setPatientForm({ ...patientForm, contact_number: e.target.value })}
+                      placeholder="e.g., 09xxxxxxxxx"
+                      inputMode="tel"
                     />
-                    <datalist id="barangay-list">
-                      {Array.from(new Set([
-                        ...globalStats.patients.map(p => p.barangay),
-                        ...globalStats.community.map(c => c.barangay)
-                      ])).filter(Boolean).sort().map(b => (
-                        <option key={b} value={b} />
-                      ))}
-                    </datalist>
                   </div>
                   <hr style={{ margin: '1.2rem 0', borderTop: '1px solid var(--border)' }} />
                   <div className="input-row">
@@ -1712,18 +1888,37 @@ export default function App() {
                     <span className="data-sub">{p.barangay} • {p.date_of_birth}</span>
                   </div>
                   <div className="patient-actions">
-                    <button className="primary action-btn" onClick={() => { setEditingId(p.id); setPatientForm(p); setLogType('epi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>+ Generate Sched</button>
                     <button
+                      type="button"
+                      className="primary action-btn"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setEditingId(p.id);
+                        setPatientForm(p);
+                        setLogType('epi');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      + Generate Sched
+                    </button>
+                    <button
+                      type="button"
                       className="secondary action-btn"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         setSelectedHistoryPatientId(prev => prev === p.id ? null : p.id);
                       }}
                     >
                       {selectedHistoryPatientId === p.id ? "Hide History" : "History"}
                     </button>
                     <button
+                      type="button"
                       className="secondary action-btn action-btn-danger"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         openConfirmDialog({
                           title: "Delete patient?",
                           message: "This will permanently remove this patient record.",
@@ -2048,6 +2243,69 @@ export default function App() {
                 }}
               >
                 {confirmWorking ? "Deleting..." : (confirmDialog.confirmText || "Delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSendReminders && (
+        <div className="registry-modal-backdrop" onClick={() => (sendingReminders ? null : setShowSendReminders(false))}>
+          <div className="registry-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "720px" }}>
+            <div className="registry-modal-header">
+              <h3 style={{ marginBottom: "0.25rem" }}>Send Reminders (Due Today)</h3>
+              <span className="data-sub">
+                {dueTodayPatients.length} patient(s) have at least one dose due today ({todayISO}).
+              </span>
+              {alreadySentRemindersToday && (
+                <div style={{ marginTop: "0.6rem", fontSize: "0.85rem", color: "#1e40af", background: "#dbeafe", padding: "0.6rem 0.75rem", borderRadius: "10px" }}>
+                  Reminders were already sent today. This action is limited to once per day.
+                </div>
+              )}
+              <div style={{ marginTop: "0.6rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Note: This UI records “sent” status. Actual SMS sending requires an SMS API/provider.
+              </div>
+            </div>
+
+            <div className="registry-modal-body">
+              <div className="data-list" style={{ marginTop: "0.75rem" }}>
+                {dueTodayPatients.map((p) => (
+                  <div key={`due-today-${p.patient_id || p.name}`} className="data-item">
+                    <div className="data-main">
+                      <span className="data-title">{p.name}</span>
+                      <span className="data-sub">
+                        Phone: {p.contact_number ? p.contact_number : "No phone number saved"}
+                      </span>
+                      <span className="data-sub" style={{ fontSize: "0.75rem" }}>
+                        {p.items.map(i => i.subtitle).join(" • ")}
+                      </span>
+                    </div>
+                    <span className="badge badge-pending">due today</span>
+                  </div>
+                ))}
+                {dueTodayPatients.length === 0 && (
+                  <p className="registry-empty">No patients due today.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="registry-modal-actions" style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button className="secondary" disabled={sendingReminders} onClick={() => setShowSendReminders(false)}>
+                Close
+              </button>
+              <button
+                className="primary"
+                disabled={sendingReminders || alreadySentRemindersToday || dueTodayPatients.length === 0}
+                onClick={() => {
+                  openConfirmDialog({
+                    title: "Confirm and send?",
+                    message: `Send reminders to ${dueTodayPatients.length} patient(s) due today?`,
+                    confirmText: "Confirm & Send",
+                    onConfirm: handleSendReminders
+                  });
+                }}
+              >
+                {sendingReminders ? "Sending..." : (alreadySentRemindersToday ? "Already sent today" : "Send reminders")}
               </button>
             </div>
           </div>
