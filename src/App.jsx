@@ -121,7 +121,7 @@ const EPI_VACCINE_GROUPS = [
     description: "Maternal tetanus toxoid series. Completion requires TT1 through TT5."
   }
 
-  
+
 ];
 
 function getEpiVaccineKey(immunization = {}) {
@@ -257,11 +257,11 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [showSendReminders, setShowSendReminders] = useState(false);
   const [sendingReminders, setSendingReminders] = useState(false);
-  
+
   const [patients, setPatients] = useState([]);
   const [immunizations, setImmunizations] = useState([]);
   const [animalBites, setAnimalBites] = useState([]);
-  
+
   const [patientForm, setPatientForm] = useState(initialPatientForm);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
@@ -422,11 +422,11 @@ export default function App() {
         setIsSignup(false);
         setError("Account created! Please sign in.");
       } else {
-        const user = await adminLogin({ 
-          identifier: fd.get("email"), 
+        const user = await adminLogin({
+          identifier: fd.get("email"),
           password: fd.get("password"),
           // Note: We can also update the shift in the session here
-          currentShift: getCurrentShift() 
+          currentShift: getCurrentShift()
         });
         setAdminUser({ ...user, shift: getCurrentShift() }); // Use current real-time shift
       }
@@ -471,7 +471,7 @@ export default function App() {
       } else {
         savedPatient = await createPatient(payload);
       }
-      
+
       if (logType === 'bite') {
         const age = getAgeFromDateOfBirth(patientForm.date_of_birth);
         const isMinor = age !== null && age < 18;
@@ -574,7 +574,7 @@ export default function App() {
   async function generateBiteSchedule(patientId, animalType, incidentDate, protocolName, exposureType = "Bitten", intake = {}) {
     const days = BITE_PROTOCOLS[protocolName];
     const incident = new Date(incidentDate);
-    
+
     // Create the Bite Record
     const biteRecord = await createAnimalBite({
       patient_id: patientId,
@@ -592,14 +592,14 @@ export default function App() {
     for (let i = 0; i < days.length; i++) {
       const scheduledDate = new Date(incident);
       scheduledDate.setDate(incident.getDate() + days[i]);
-      
+
       await createImmunization({
         patient_id: patientId,
         vaccine_name: "Anti-Rabies",
         dose_number: i + 1,
         scheduled_date: scheduledDate.toISOString().split('T')[0],
         status: 'pending',
-        notes: `Bite Case #${biteRecord.id.slice(0,5)} - Day ${days[i]}`
+        notes: `Bite Case #${biteRecord.id.slice(0, 5)} - Day ${days[i]}`
       });
     }
     loadAllData();
@@ -702,29 +702,29 @@ export default function App() {
       data.treatmentRate = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
       data.activeShare = activeBiteCases > 0 ? Math.round((data.active / activeBiteCases) * 100) : 0;
     });
-    
+
     // Group stats by Barangay
     const barangayStats = scopedPatients.reduce((acc, p) => {
       const b = p.barangay || "Unknown";
       if (!acc[b]) {
         const communityData = gComm.find(c => c.barangay === b);
-        acc[b] = { 
-          count: 0, 
-          fullyImmunized: 0, 
+        acc[b] = {
+          count: 0,
+          fullyImmunized: 0,
           totalDoses: 0,
           completedDoses: 0,
-          population: communityData?.total_population || 0 
+          population: communityData?.total_population || 0
         };
       }
       acc[b].count++;
-      
+
       const pImms = scopedImms.filter(i => i.patient_id === p.id && getEpiVaccineKey(i));
       acc[b].totalDoses += pImms.length;
       acc[b].completedDoses += pImms.filter(i => i.status === 'completed').length;
-      
+
       const isFull = pImms.length > 0 && pImms.every(i => i.status === 'completed');
       if (isFull) acc[b].fullyImmunized++;
-      
+
       return acc;
     }, {});
 
@@ -876,7 +876,7 @@ export default function App() {
       }
       const allCompleted = doses.length > 0 && doses.every(d => d.status === 'completed');
       const hasAnyRecord = doses.some(d => d.record);
-      const remarks = !hasAnyRecord ? "—" : allCompleted ? "Done" : "Pending";
+      const remarks = !hasAnyRecord ? "—" : allCompleted ? "Accomplished" : "Pending";
       return { ...vaccine, doses, remarks, allCompleted, hasAnyRecord };
     });
   }, [immunizations, selectedRegistryHistoryPatientId]);
@@ -1011,7 +1011,7 @@ export default function App() {
             {isSignup && (
               <div className="input-group">
                 <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  Shift Assignment 
+                  Shift Assignment
                   <span className="badge badge-pending" style={{ fontSize: '0.7rem' }}>Current: {getCurrentShift()}</span>
                 </label>
                 <div style={{ padding: '0.8rem', background: '#f1f5f9', borderRadius: '8px', fontSize: '0.9rem', color: '#475569' }}>
@@ -1271,37 +1271,37 @@ export default function App() {
 
               <div className="bite-module-section">
                 <div className="active-bite-summary">
-                <div>
-                  <span className="stat-value">{stats.activeBiteCases}</span>
-                  <span className="stat-label">Active Bite Cases</span>
+                  <div>
+                    <span className="stat-value">{stats.activeBiteCases}</span>
+                    <span className="stat-label">Active Bite Cases</span>
+                  </div>
+                  <strong>{stats.activeBiteCaseRate}%</strong>
                 </div>
-                <strong>{stats.activeBiteCaseRate}%</strong>
-              </div>
 
-              <div className="bite-breakdown">
-                {ANIMAL_GROUPS.map(group => {
-                  const data = stats.biteStatsByAnimal[group];
-                  return (
-                    <div className="bite-breakdown-card" key={`active-${group}`}>
-                      <div className="bite-breakdown-header">
-                        <div>
-                          <h3>{group}</h3>
-                          <span>Active cases</span>
+                <div className="bite-breakdown">
+                  {ANIMAL_GROUPS.map(group => {
+                    const data = stats.biteStatsByAnimal[group];
+                    return (
+                      <div className="bite-breakdown-card" key={`active-${group}`}>
+                        <div className="bite-breakdown-header">
+                          <div>
+                            <h3>{group}</h3>
+                            <span>Active cases</span>
+                          </div>
+                          <strong>{data.activeShare}%</strong>
                         </div>
-                        <strong>{data.activeShare}%</strong>
+                        <div className="bite-stat-row bite-stat-row-highlight">
+                          <span>Active Share</span>
+                          <strong>{data.active} ({data.activeShare}%)</strong>
+                        </div>
+                        <div className="bite-stat-row">
+                          <span>Pending</span>
+                          <strong>{data.pending}</strong>
+                        </div>
                       </div>
-                      <div className="bite-stat-row bite-stat-row-highlight">
-                        <span>Active Share</span>
-                        <strong>{data.active} ({data.activeShare}%)</strong>
-                      </div>
-                      <div className="bite-stat-row">
-                        <span>Pending</span>
-                        <strong>{data.pending}</strong>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -1374,8 +1374,8 @@ export default function App() {
                 <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
                   <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
                     <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                    <circle 
-                      cx="18" cy="18" r="16" fill="none" stroke="var(--primary)" strokeWidth="3" 
+                    <circle
+                      cx="18" cy="18" r="16" fill="none" stroke="var(--primary)" strokeWidth="3"
                       strokeDasharray={`${overallEpiRate} 100`}
                     />
                   </svg>
@@ -1399,8 +1399,8 @@ export default function App() {
                 <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
                   <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
                     <circle cx="18" cy="18" r="16" fill="none" stroke="#fee2e2" strokeWidth="3" />
-                    <circle 
-                      cx="18" cy="18" r="16" fill="none" stroke="#dc2626" strokeWidth="3" 
+                    <circle
+                      cx="18" cy="18" r="16" fill="none" stroke="#dc2626" strokeWidth="3"
                       strokeDasharray={`${stats.animalBiteTreatmentRate} 100`}
                     />
                   </svg>
@@ -1474,27 +1474,27 @@ export default function App() {
             </div>
 
             {false && (
-            <div className="card">
-              <h2>🐕 Active Bite Cases</h2>
-              <ul className="data-list">
-                {globalStats.animalBites
-                  .filter(b => b.treatment_status !== 'completed')
-                  .slice(0, 5)
-                  .map(bite => (
-                    <li key={bite.id} className="data-item">
-                      <div className="data-main">
-                        <span className="data-title">{globalStats.patients.find(p => p.id === bite.patient_id)?.full_name || 'Loading...'}</span>
-                        <span className="data-sub">{bite.animal_type} bite • Status: {bite.treatment_status}</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
-                      </div>
-                    </li>
-                  ))
-                }
-                {globalStats.animalBites.filter(b => b.treatment_status !== 'completed').length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No active bite cases.</p>}
-              </ul>
-            </div>
+              <div className="card">
+                <h2>🐕 Active Bite Cases</h2>
+                <ul className="data-list">
+                  {globalStats.animalBites
+                    .filter(b => b.treatment_status !== 'completed')
+                    .slice(0, 5)
+                    .map(bite => (
+                      <li key={bite.id} className="data-item">
+                        <div className="data-main">
+                          <span className="data-title">{globalStats.patients.find(p => p.id === bite.patient_id)?.full_name || 'Loading...'}</span>
+                          <span className="data-sub">{bite.animal_type} bite • Status: {bite.treatment_status}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
+                        </div>
+                      </li>
+                    ))
+                  }
+                  {globalStats.animalBites.filter(b => b.treatment_status !== 'completed').length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No active bite cases.</p>}
+                </ul>
+              </div>
             )}
           </div>
         </section>
@@ -1546,11 +1546,11 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Name</label>
-                      <input value={patientForm.full_name} onChange={e => setPatientForm({...patientForm, full_name: e.target.value})} required />
+                      <input value={patientForm.full_name} onChange={e => setPatientForm({ ...patientForm, full_name: e.target.value })} required />
                     </div>
                     <div className="input-group">
                       <label>Sex</label>
-                      <select value={patientForm.sex} onChange={e => setPatientForm({...patientForm, sex: e.target.value})} required>
+                      <select value={patientForm.sex} onChange={e => setPatientForm({ ...patientForm, sex: e.target.value })} required>
                         <option value="">Select</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -1571,14 +1571,14 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Address</label>
-                      <input value={patientForm.address || ""} onChange={e => setPatientForm({...patientForm, address: e.target.value})} />
+                      <input value={patientForm.address || ""} onChange={e => setPatientForm({ ...patientForm, address: e.target.value })} />
                     </div>
                     <div className="input-group">
                       <label>Barangay</label>
                       <input
                         list="barangay-list"
                         value={patientForm.barangay}
-                        onChange={e => setPatientForm({...patientForm, barangay: e.target.value})}
+                        onChange={e => setPatientForm({ ...patientForm, barangay: e.target.value })}
                         placeholder="Select or type new..."
                       />
                       <datalist id="barangay-list">
@@ -1751,11 +1751,11 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Full Name</label>
-                      <input value={patientForm.full_name} onChange={e => setPatientForm({...patientForm, full_name: e.target.value})} required />
+                      <input value={patientForm.full_name} onChange={e => setPatientForm({ ...patientForm, full_name: e.target.value })} required />
                     </div>
                     <div className="input-group">
                       <label>Sex</label>
-                      <select value={patientForm.sex} onChange={e => setPatientForm({...patientForm, sex: e.target.value})}>
+                      <select value={patientForm.sex} onChange={e => setPatientForm({ ...patientForm, sex: e.target.value })}>
                         <option value="">Select</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -1765,7 +1765,7 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>DOB</label>
-                      <input type="date" value={patientForm.date_of_birth} onChange={e => setPatientForm({...patientForm, date_of_birth: e.target.value})} required />
+                      <input type="date" value={patientForm.date_of_birth} onChange={e => setPatientForm({ ...patientForm, date_of_birth: e.target.value })} required />
                     </div>
                     <div className="input-group">
                       <label>Place of Birth</label>
@@ -1813,14 +1813,14 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Address</label>
-                      <input value={patientForm.address || ""} onChange={e => setPatientForm({...patientForm, address: e.target.value})} />
+                      <input value={patientForm.address || ""} onChange={e => setPatientForm({ ...patientForm, address: e.target.value })} />
                     </div>
                     <div className="input-group">
                       <label>Barangay</label>
-                      <input 
+                      <input
                         list="barangay-list"
-                        value={patientForm.barangay} 
-                        onChange={e => setPatientForm({...patientForm, barangay: e.target.value})} 
+                        value={patientForm.barangay}
+                        onChange={e => setPatientForm({ ...patientForm, barangay: e.target.value })}
                         placeholder="Select or type new..."
                       />
                       <datalist id="barangay-list">
@@ -1898,7 +1898,7 @@ export default function App() {
 
               <div className="form-actions">
                 <button type="submit" className="primary">{editingId ? "Save Changes" : "Register Patient"}</button>
-                {editingId && <button type="button" className="secondary" onClick={() => {setEditingId(null); setPatientForm(initialPatientForm); setLogType('none');}}>Cancel</button>}
+                {editingId && <button type="button" className="secondary" onClick={() => { setEditingId(null); setPatientForm(initialPatientForm); setLogType('none'); }}>Cancel</button>}
               </div>
             </form>
           </section>
@@ -1933,10 +1933,10 @@ export default function App() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setSelectedHistoryPatientId(prev => prev === p.id ? null : p.id);
+                        setSelectedHistoryPatientId(p.id);
                       }}
                     >
-                      {selectedHistoryPatientId === p.id ? "Hide History" : "History"}
+                      History
                     </button>
                     <button
                       type="button"
@@ -1962,40 +1962,50 @@ export default function App() {
               ))}
             </div>
             {selectedHistoryPatient && (
-              <div className="patient-history-panel">
-                <h3>History: {selectedHistoryPatient.full_name}</h3>
-                <div className="patient-history-grid">
-                  <div>
-                    <h4 className="patient-history-title">Vaccine History</h4>
-                    <div className="data-list">
-                      {selectedPatientImmunizationHistory.map(imm => (
-                        <div key={`patient-history-imm-${imm.id}`} className="data-item">
-                          <div className="data-main">
-                            <span className="data-title">{imm.vaccine_name} (Dose {imm.dose_number})</span>
-                            <span className="data-sub">Scheduled: {imm.scheduled_date || "N/A"}</span>
-                            <span className="data-sub">Given: {imm.administered_date || "Not yet"}</span>
-                          </div>
-                          <span className={`badge badge-${imm.status}`}>{imm.status}</span>
+              <div className="registry-modal-backdrop" onClick={() => setSelectedHistoryPatientId(null)}>
+                <div className="registry-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
+                  <div className="registry-modal-header">
+                    <h3>History: {selectedHistoryPatient.full_name}</h3>
+                    <span className="data-sub">Clinical Record & Immunization History</span>
+                  </div>
+                  <div className="registry-modal-body">
+                    <div className="patient-history-grid">
+                      <div>
+                        <h4 className="patient-history-title">Vaccine History</h4>
+                        <div className="data-list">
+                          {selectedPatientImmunizationHistory.map(imm => (
+                            <div key={`patient-history-imm-${imm.id}`} className="data-item">
+                              <div className="data-main">
+                                <span className="data-title">{imm.vaccine_name} (Dose {imm.dose_number})</span>
+                                <span className="data-sub">Scheduled: {imm.scheduled_date || "N/A"}</span>
+                                <span className="data-sub">Given: {imm.administered_date || "Not yet"}</span>
+                              </div>
+                              <span className={`badge badge-${imm.status}`}>{imm.status === 'completed' ? 'accomplished' : imm.status}</span>
+                            </div>
+                          ))}
+                          {selectedPatientImmunizationHistory.length === 0 && <p className="registry-empty">No vaccine records.</p>}
                         </div>
-                      ))}
-                      {selectedPatientImmunizationHistory.length === 0 && <p className="registry-empty">No vaccine records.</p>}
+                      </div>
+                      <div>
+                        <h4 className="patient-history-title">Animal Bite Treatment History</h4>
+                        <div className="data-list">
+                          {selectedPatientBiteHistory.map(bite => (
+                            <div key={`patient-history-bite-${bite.id}`} className="data-item">
+                              <div className="data-main">
+                                <span className="data-title">{bite.animal_type} • {bite.incident_date}</span>
+                                <span className="data-sub">Exposure: {bite.severity_category || "N/A"}</span>
+                                <span className="data-sub">Protocol: {bite.treatment_protocol || "N/A"}</span>
+                              </div>
+                              <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
+                            </div>
+                          ))}
+                          {selectedPatientBiteHistory.length === 0 && <p className="registry-empty">No animal bite treatment records.</p>}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <h4 className="patient-history-title">Animal Bite Treatment History</h4>
-                    <div className="data-list">
-                      {selectedPatientBiteHistory.map(bite => (
-                        <div key={`patient-history-bite-${bite.id}`} className="data-item">
-                          <div className="data-main">
-                            <span className="data-title">{bite.animal_type} • {bite.incident_date}</span>
-                            <span className="data-sub">Exposure: {bite.severity_category || "N/A"}</span>
-                            <span className="data-sub">Protocol: {bite.treatment_protocol || "N/A"}</span>
-                          </div>
-                          <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
-                        </div>
-                      ))}
-                      {selectedPatientBiteHistory.length === 0 && <p className="registry-empty">No animal bite treatment records.</p>}
-                    </div>
+                  <div className="registry-modal-actions">
+                    <button className="primary" onClick={() => setSelectedHistoryPatientId(null)}>Close</button>
                   </div>
                 </div>
               </div>
@@ -2009,132 +2019,173 @@ export default function App() {
           <div>
             <div className="registry-flow-header">
               <h2>Clinical Registries (Active Cases)</h2>
-            <span>Grouped into Animal Bite and EPI with Status and Hx sections</span>
-          </div>
-          <div className="dashboard-grid">
-            <div className="card registry-card registry-card-bite">
-              <h2>🐕 Animal Bite</h2>
-              <div className="registry-group-header">
-                <h3>Status (Active Patients)</h3>
-                <span>{registryAnimalBiteActive.length} active</span>
-              </div>
-              <div className="data-list">
-                {registryAnimalBiteActive.map(b => (
-                  <div key={b.id} className="data-item">
-                    <div className="data-main">
-                      <span className="data-title">{b.patients?.full_name}</span>
-                      <span className="data-sub">Status: {b.doses_administered}/{b.total_required_doses} doses</span>
-                      <span className="data-sub" style={{ fontSize: '0.75rem' }}>Hx: {b.animal_type} bite ({b.incident_date})</span>
-                    </div>
-                    <div className="registry-row-actions">
-                      <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
-                      {b.treatment_status !== 'completed' && (
-                        <button
-                          className="primary registry-action-btn"
-                          onClick={async () => {
-                            await updateAnimalBite(b.id, { treatment_status: 'completed' });
-                            loadAllData();
-                          }}
-                        >
-                          Mark Completed
-                        </button>
-                      )}
-                      <button
-                        className="secondary registry-action-btn"
-                        onClick={() => {
-                          setSelectedRegistryHistoryPatientId(prev => prev === b.patient_id ? null : b.patient_id);
-                        }}
-                      >
-                        {selectedRegistryHistoryPatientId === b.patient_id ? "Hide History" : "History"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {registryAnimalBiteActive.length === 0 && (
-                  <p className="registry-empty">No active animal bite patients.</p>
-                )}
-              </div>
-              <div className="registry-group-header">
-                <h3>Hx (Recent History)</h3>
-                <span>Latest 12 records</span>
-              </div>
-              <div className="data-list">
-                {registryAnimalBiteHistory.map(b => (
-                  <div key={`hx-bite-${b.id}`} className="data-item">
-                    <div className="data-main">
-                      <span className="data-title">{b.patients?.full_name || "Unknown Patient"}</span>
-                      <span className="data-sub">
-                        {b.animal_type} • Incident: {b.incident_date}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
-                      <button 
-                        className="secondary" 
-                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
-                        onClick={() => {
-                          openConfirmDialog({
-                            title: "Delete animal bite record?",
-                            message: "This will permanently remove this animal bite history record.",
-                            confirmText: "Delete",
-                            onConfirm: async () => {
-                              await deleteAnimalBite(b.id);
-                              loadAllData();
-                            }
-                          });
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {registryAnimalBiteHistory.length === 0 && (
-                  <p className="registry-empty">No animal bite history yet.</p>
-                )}
-              </div>
+              <span>Grouped into Animal Bite and EPI with Status and Hx sections</span>
             </div>
-
-            <div className="card registry-card registry-card-epi">
-              <h2>💉 EPI</h2>
-              <div className="registry-group-header">
-                <h3>Status (Active Patients)</h3>
-                <span>{registryEpiActive.length} active</span>
-              </div>
-              <div className="data-list">
-                {registryEpiActive.map(entry => {
-                  const imm = entry.next_due;
-                  const today = new Date().toISOString().split('T')[0];
-                  const isDue = (imm.scheduled_date || "2999-12-31") <= today;
-                  return (
-                    <div key={`epi-active-${entry.patient_id || imm.id}`} className={`data-item ${isDue ? 'due-alert' : ''}`} style={isDue ? { borderLeft: '4px solid #ef4444', background: '#fef2f2' } : {}}>
+            <div className="dashboard-grid">
+              <div className="card registry-card registry-card-bite">
+                <h2>🐕 Animal Bite</h2>
+                <div className="registry-group-header">
+                  <h3>Status (Active Patients)</h3>
+                  <span>{registryAnimalBiteActive.length} active</span>
+                </div>
+                <div className="data-list">
+                  {registryAnimalBiteActive.map(b => (
+                    <div key={b.id} className="data-item">
                       <div className="data-main">
-                        <button type="button" className="registry-link-btn" onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}>
-                          {isDue && <span title="Due today or overdue" style={{ fontWeight: 800, color: "#ef4444" }}>DUE </span>}
-                          {entry.patient_name}
-                        </button>
-                        <span className="data-sub" style={{ fontSize: '0.75rem', fontWeight: isDue ? 700 : 400, color: isDue ? '#ef4444' : 'inherit' }}>
-                          {entry.pending_count} pending dose(s)
-                        </span>
+                        <span className="data-title">{b.patients?.full_name}</span>
+                        <span className="data-sub">Status: {b.doses_administered}/{b.total_required_doses} doses</span>
+                        <span className="data-sub" style={{ fontSize: '0.75rem' }}>Hx: {b.animal_type} bite ({b.incident_date})</span>
                       </div>
                       <div className="registry-row-actions">
-                        <span className={`badge badge-${imm.status}`}>pending</span>
-                        <button className="primary registry-action-btn" onClick={async () => {
-                          await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
-                          loadAllData();
-                        }}>Mark Done</button>
-                        {/* <button
+                        <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
+                        {b.treatment_status !== 'completed' && (
+                          <button
+                            className="primary registry-action-btn"
+                            onClick={async () => {
+                              await updateAnimalBite(b.id, { treatment_status: 'completed' });
+                              loadAllData();
+                            }}
+                          >
+                            Mark Completed
+                          </button>
+                        )}
+                        <button
+                          className="secondary registry-action-btn"
+                          onClick={() => {
+                            setSelectedRegistryHistoryPatientId(prev => prev === b.patient_id ? null : b.patient_id);
+                          }}
+                        >
+                          {selectedRegistryHistoryPatientId === b.patient_id ? "Hide History" : "History"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {registryAnimalBiteActive.length === 0 && (
+                    <p className="registry-empty">No active animal bite patients.</p>
+                  )}
+                </div>
+                <div className="registry-group-header">
+                  <h3>Hx (Recent History)</h3>
+                  <span>Latest 12 records</span>
+                </div>
+                <div className="data-list">
+                  {registryAnimalBiteHistory.map(b => (
+                    <div key={`hx-bite-${b.id}`} className="data-item">
+                      <div className="data-main">
+                        <span className="data-title">{b.patients?.full_name || "Unknown Patient"}</span>
+                        <span className="data-sub">
+                          {b.animal_type} • Incident: {b.incident_date}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
+                        <button
+                          className="secondary"
+                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
+                          onClick={() => {
+                            openConfirmDialog({
+                              title: "Delete animal bite record?",
+                              message: "This will permanently remove this animal bite history record.",
+                              confirmText: "Delete",
+                              onConfirm: async () => {
+                                await deleteAnimalBite(b.id);
+                                loadAllData();
+                              }
+                            });
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {registryAnimalBiteHistory.length === 0 && (
+                    <p className="registry-empty">No animal bite history yet.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="card registry-card registry-card-epi">
+                <h2>💉 EPI</h2>
+                <div className="registry-group-header">
+                  <h3>Status (Active Patients)</h3>
+                  <span>{registryEpiActive.length} active</span>
+                </div>
+                <div className="data-list">
+                  {registryEpiActive.map(entry => {
+                    const imm = entry.next_due;
+                    const today = new Date().toISOString().split('T')[0];
+                    const isDue = (imm.scheduled_date || "2999-12-31") <= today;
+                    return (
+                      <div key={`epi-active-${entry.patient_id || imm.id}`} className={`data-item ${isDue ? 'due-alert' : ''}`} style={isDue ? { borderLeft: '4px solid #ef4444', background: '#fef2f2' } : {}}>
+                        <div className="data-main">
+                          <button type="button" className="registry-link-btn" onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}>
+                            {isDue && <span title="Due today or overdue" style={{ fontWeight: 800, color: "#ef4444" }}>DUE </span>}
+                            {entry.patient_name}
+                          </button>
+                          <span className="data-sub" style={{ fontSize: '0.75rem', fontWeight: isDue ? 700 : 400, color: isDue ? '#ef4444' : 'inherit' }}>
+                            {entry.pending_count} pending dose(s)
+                          </span>
+                        </div>
+                        <div className="registry-row-actions">
+                          <span className={`badge badge-${imm.status}`}>pending</span>
+                          <button className="primary registry-action-btn" onClick={async () => {
+                            await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
+                            loadAllData();
+                          }}>Mark Done</button>
+                          {/* <button
                           className="secondary registry-action-btn"
                           onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}
                         >
                           Details
                         </button> */}
-                        <button 
-                          className="secondary registry-action-btn action-btn-danger"
+                          <button
+                            className="secondary registry-action-btn action-btn-danger"
+                            onClick={() => {
+                              openConfirmDialog({
+                                title: "Delete immunization record?",
+                                message: "This will permanently remove this immunization record.",
+                                confirmText: "Delete",
+                                onConfirm: async () => {
+                                  await deleteImmunization(imm.id);
+                                  loadAllData();
+                                }
+                              });
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}                {registryEpiActive.length === 0 && (
+                    <p className="registry-empty">No active EPI patients.</p>
+                  )}
+                </div>
+                <div className="registry-group-header">
+                  <h3>Hx (Recent History)</h3>
+                  <span>Latest 12 accomplished records</span>
+                </div>
+                <div className="data-list">
+                  {registryEpiHistory.map(imm => (
+                    <div key={`hx-epi-${imm.id}`} className="data-item">
+                      <div className="data-main">
+                        <button type="button" className="registry-link-btn" onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}>
+                          {imm.patients?.full_name || "Unknown Patient"}
+                        </button>
+                        <span className="data-sub">
+                          {imm.vaccine_name} (# {imm.dose_number}) • Accomplished: {imm.administered_date || imm.scheduled_date}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <span className="badge badge-completed">accomplished</span>
+                        <button
+                          className="secondary"
+                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
                           onClick={() => {
                             openConfirmDialog({
-                              title: "Delete immunization record?",
-                              message: "This will permanently remove this immunization record.",
+                              title: "Delete immunization history?",
+                              message: "This will permanently remove this completed immunization history record.",
                               confirmText: "Delete",
                               onConfirm: async () => {
                                 await deleteImmunization(imm.id);
@@ -2147,112 +2198,71 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                  );
-                })}                {registryEpiActive.length === 0 && (
-                  <p className="registry-empty">No active EPI patients.</p>
-                )}
-              </div>
-              <div className="registry-group-header">
-                <h3>Hx (Recent History)</h3>
-                <span>Latest 12 completed records</span>
-              </div>
-              <div className="data-list">
-                {registryEpiHistory.map(imm => (
-                  <div key={`hx-epi-${imm.id}`} className="data-item">
-                    <div className="data-main">
-                      <button type="button" className="registry-link-btn" onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}>
-                        {imm.patients?.full_name || "Unknown Patient"}
-                      </button>
-                      <span className="data-sub">
-                        {imm.vaccine_name} (# {imm.dose_number}) • Completed: {imm.administered_date || imm.scheduled_date}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <span className="badge badge-completed">completed</span>
-                      <button 
-                        className="secondary" 
-                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
-                        onClick={() => {
-                          openConfirmDialog({
-                            title: "Delete immunization history?",
-                            message: "This will permanently remove this completed immunization history record.",
-                            confirmText: "Delete",
-                            onConfirm: async () => {
-                              await deleteImmunization(imm.id);
-                              loadAllData();
-                            }
-                          });
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {registryEpiHistory.length === 0 && (
-                  <p className="registry-empty">No EPI history yet.</p>
-                )}
+                  ))}
+                  {registryEpiHistory.length === 0 && (
+                    <p className="registry-empty">No EPI history yet.</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          {selectedRegistryHistoryPatient && (
-            <div className="registry-modal-backdrop" onClick={() => setSelectedRegistryHistoryPatientId(null)}>
-              <div className="registry-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '980px' }}>
-                <div className="registry-modal-header">
-                  <h3>{selectedRegistryHistoryPatient.full_name}</h3>
-                  <span className="data-sub">
-                    {selectedRegistryHistoryPatient.sex || "N/A"} • DOB: {selectedRegistryHistoryPatient.date_of_birth || "N/A"} • {selectedRegistryHistoryPatient.barangay || "Unknown Barangay"}
-                  </span>
-                </div>
-                <div className="registry-modal-body">
-                  <h4 style={{ margin: '0 0 0.75rem' }}>📋 Immunization Record (Bakuna)</h4>
-                  <div className="vc-scroll">
-                    <table className="vc-table">
-                      <thead>
-                        <tr>
-                          <th className="vc-th-name">Bakuna (Vaccine)</th>
-                          <th className="vc-th-doses">Doses</th>
-                          {[1,2,3,4,5].map(n => (
-                            <th key={n} className="vc-th-date">Dose {n}</th>
-                          ))}
-                          <th className="vc-th-remarks">Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedRegistryVaccineCard.map(vaccine => (
-                          <tr key={vaccine.key} className={vaccine.allCompleted ? 'vc-row-done' : ''}>
-                            <td className="vc-name">{vaccine.label}</td>
-                            <td className="vc-doses-cell"><span className="vc-dose-badge">{vaccine.requiredDoses}</span></td>
-                            {[1,2,3,4,5].map(doseNum => {
-                              const dose = vaccine.doses.find(d => d.doseNumber === doseNum);
-                              const isNA = doseNum > vaccine.requiredDoses;
-                              return (
-                                <td key={doseNum} className={`vc-date-cell ${isNA ? 'vc-date-na' : ''} ${dose?.status === 'completed' ? 'vc-date-done' : dose?.status ? 'vc-date-pending' : ''}`}>
-                                  {isNA ? '' : (dose?.date || '—')}
-                                </td>
-                              );
-                            })}
-                            <td className="vc-remarks-cell">
-                              {vaccine.remarks !== '—' ? (
-                                <span className={`vc-remark-badge ${vaccine.remarks === 'Done' ? 'vc-remark-done' : 'vc-remark-pending'}`}>
-                                  {vaccine.remarks}
-                                </span>
-                              ) : (
-                                <span className="vc-remark-none">—</span>
-                              )}
-                            </td>
+            {selectedRegistryHistoryPatient && (
+              <div className="registry-modal-backdrop" onClick={() => setSelectedRegistryHistoryPatientId(null)}>
+                <div className="registry-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '980px' }}>
+                  <div className="registry-modal-header">
+                    <h3>{selectedRegistryHistoryPatient.full_name}</h3>
+                    <span className="data-sub">
+                      {selectedRegistryHistoryPatient.sex || "N/A"} • DOB: {selectedRegistryHistoryPatient.date_of_birth || "N/A"} • {selectedRegistryHistoryPatient.barangay || "Unknown Barangay"}
+                    </span>
+                  </div>
+                  <div className="registry-modal-body">
+                    <h4 style={{ margin: '0 0 0.75rem' }}>📋 Immunization Record (Bakuna)</h4>
+                    <div className="vc-scroll">
+                      <table className="vc-table">
+                        <thead>
+                          <tr>
+                            <th className="vc-th-name">Bakuna (Vaccine)</th>
+                            <th className="vc-th-doses">Doses</th>
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <th key={n} className="vc-th-date">Dose {n}</th>
+                            ))}
+                            <th className="vc-th-remarks">Remarks</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {selectedRegistryVaccineCard.map(vaccine => (
+                            <tr key={vaccine.key} className={vaccine.allCompleted ? 'vc-row-done' : ''}>
+                              <td className="vc-name">{vaccine.label}</td>
+                              <td className="vc-doses-cell"><span className="vc-dose-badge">{vaccine.requiredDoses}</span></td>
+                              {[1, 2, 3, 4, 5].map(doseNum => {
+                                const dose = vaccine.doses.find(d => d.doseNumber === doseNum);
+                                const isNA = doseNum > vaccine.requiredDoses;
+                                return (
+                                  <td key={doseNum} className={`vc-date-cell ${isNA ? 'vc-date-na' : ''} ${dose?.status === 'completed' ? 'vc-date-done' : dose?.status ? 'vc-date-pending' : ''}`}>
+                                    {isNA ? '' : (dose?.date || '—')}
+                                  </td>
+                                );
+                              })}
+                              <td className="vc-remarks-cell">
+                                {vaccine.remarks !== '—' ? (
+                                  <span className={`vc-remark-badge ${vaccine.remarks === 'Accomplished' ? 'vc-remark-done' : 'vc-remark-pending'}`}>
+                                    {vaccine.remarks}
+                                  </span>
+                                ) : (
+                                  <span className="vc-remark-none">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="registry-modal-actions">
+                    <button className="primary" onClick={() => setSelectedRegistryHistoryPatientId(null)}>Close</button>
                   </div>
                 </div>
-                <div className="registry-modal-actions">
-                  <button className="primary" onClick={() => setSelectedRegistryHistoryPatientId(null)}>Close</button>
-                </div>
               </div>
-            </div>
-          )}
+            )}
           </div>
         </section>
       )}
