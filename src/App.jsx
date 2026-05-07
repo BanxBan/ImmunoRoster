@@ -147,6 +147,30 @@ const BITE_PROTOCOLS = {
   "Booster (0, 3)": [0, 3]
 };
 const EXPOSURE_CATEGORIES = ["1", "2", "3"];
+const EPI_ROUTE_BY_VACCINE_KEY = {
+  "hep-b": "IM",
+  "bcg": "ID",
+  "opv": "Oral",
+  "ipv": "IM",
+  "pentavalent": "IM",
+  "rotavirus": "Oral",
+  "measles": "SC",
+  "mmr": "SC",
+  "tt": "IM",
+  "pcv": "IM"
+};
+const EPI_INTERVAL_DAYS_BY_VACCINE_KEY = {
+  "hep-b": 28,
+  "bcg": 28,
+  "opv": 28,
+  "ipv": 28,
+  "pentavalent": 28,
+  "rotavirus": 28,
+  "measles": 30,
+  "mmr": 30,
+  "tt": 28,
+  "pcv": 28
+};
 
 const ANIMAL_GROUPS = ["Dogs", "Cats", "Rats", "Others"];
 
@@ -209,6 +233,15 @@ export default function App() {
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
   const [selectedHistoryPatientId, setSelectedHistoryPatientId] = useState(null);
   const [selectedRegistryHistoryPatientId, setSelectedRegistryHistoryPatientId] = useState(null);
+  const [epiForm, setEpiForm] = useState({
+    vaccine_name: "",
+    route: "",
+    dose_number: 1,
+    scheduled_date: new Date().toISOString().split('T')[0]
+  });
+  const [biteDateOfExposure, setBiteDateOfExposure] = useState(new Date().toISOString().split('T')[0]);
+  const [biteProtocol, setBiteProtocol] = useState(Object.keys(BITE_PROTOCOLS)[0]);
+  const [biteSchedulePreview, setBiteSchedulePreview] = useState({ d0: "", d3: "", d7: "", d28: "" });
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -248,6 +281,52 @@ export default function App() {
     setShowEpiDetails(false);
     setShowActiveBiteAlert(false);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (logType !== "bite") return;
+    const incident = new Date(biteDateOfExposure);
+    if (Number.isNaN(incident.getTime())) return;
+    const days = BITE_PROTOCOLS[biteProtocol] || [];
+    const nextPreview = { d0: "", d3: "", d7: "", d28: "" };
+    days.forEach((day) => {
+      const dt = new Date(incident);
+      dt.setDate(incident.getDate() + day);
+      const value = dt.toISOString().split("T")[0];
+      if (day === 0) nextPreview.d0 = value;
+      if (day === 3) nextPreview.d3 = value;
+      if (day === 7) nextPreview.d7 = value;
+      if (day === 28) nextPreview.d28 = value;
+    });
+    setBiteSchedulePreview(nextPreview);
+  }, [biteDateOfExposure, biteProtocol, logType]);
+
+  useEffect(() => {
+    if (logType !== "epi") return;
+    if (!epiForm.vaccine_name) return;
+    const key = getEpiVaccineKey({ vaccine_name: epiForm.vaccine_name });
+    const route = EPI_ROUTE_BY_VACCINE_KEY[key] || "IM";
+    const intervalDays = EPI_INTERVAL_DAYS_BY_VACCINE_KEY[key] || 28;
+    const targetPatientId = editingId || null;
+    let nextDoseNumber = 1;
+    let nextDate = new Date().toISOString().split("T")[0];
+
+    if (targetPatientId) {
+      const sameVaccineRecords = immunizations
+        .filter((imm) => imm.patient_id === targetPatientId && imm.vaccine_name === epiForm.vaccine_name)
+        .sort((a, b) => Number(a.dose_number || 1) - Number(b.dose_number || 1));
+      if (sameVaccineRecords.length > 0) {
+        const last = sameVaccineRecords[sameVaccineRecords.length - 1];
+        nextDoseNumber = Number(last.dose_number || 0) + 1;
+        const base = new Date(last.administered_date || last.scheduled_date || new Date());
+        if (!Number.isNaN(base.getTime())) {
+          base.setDate(base.getDate() + intervalDays);
+          nextDate = base.toISOString().split("T")[0];
+        }
+      }
+    }
+
+    setEpiForm((prev) => ({ ...prev, route, dose_number: nextDoseNumber, scheduled_date: nextDate }));
+  }, [epiForm.vaccine_name, logType, editingId, immunizations]);
 
   // Auth Handlers
   const getCurrentShift = () => {
@@ -374,12 +453,14 @@ export default function App() {
           }
         );
       } else if (logType === 'epi') {
+        const routeNote = epiForm.route ? `Route: ${epiForm.route}` : null;
         await createImmunization({
           patient_id: savedPatient.id,
-          vaccine_name: fd.get("vaccine"),
-          dose_number: parseInt(fd.get("dose")),
-          scheduled_date: fd.get("date"),
-          status: 'pending'
+          vaccine_name: epiForm.vaccine_name,
+          dose_number: Number(epiForm.dose_number || 1),
+          scheduled_date: epiForm.scheduled_date,
+          status: 'pending',
+          notes: routeNote
         });
       }
 
@@ -387,6 +468,12 @@ export default function App() {
       setEditingId(null);
       setLogType('none');
       setBiteAnimalType('Dog');
+      setEpiForm({
+        vaccine_name: "",
+        route: "",
+        dose_number: 1,
+        scheduled_date: new Date().toISOString().split('T')[0]
+      });
       loadAllData();
     } catch (err) { setError(err.message); }
   }
@@ -1190,7 +1277,7 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Date of Exposure</label>
-                      <input type="date" name="dateOfExposure" defaultValue={new Date().toISOString().split('T')[0]} required />
+                      <input type="date" name="dateOfExposure" value={biteDateOfExposure} onChange={e => setBiteDateOfExposure(e.target.value)} required />
                     </div>
                     <div className="input-group">
                       <label>Place of Exposure</label>
@@ -1249,7 +1336,7 @@ export default function App() {
                     </div>
                     <div className="input-group">
                       <label>Treatment Protocol</label>
-                      <select name="protocol" required>
+                      <select name="protocol" value={biteProtocol} onChange={e => setBiteProtocol(e.target.value)} required>
                         {Object.keys(BITE_PROTOCOLS).map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
                     </div>
@@ -1284,12 +1371,12 @@ export default function App() {
                     </select>
                   </div>
                   <div className="input-row">
-                    <div className="input-group"><label>D0</label><input type="date" name="scheduleD0" /></div>
-                    <div className="input-group"><label>D3</label><input type="date" name="scheduleD3" /></div>
+                    <div className="input-group"><label>D0</label><input type="date" name="scheduleD0" value={biteSchedulePreview.d0} readOnly /></div>
+                    <div className="input-group"><label>D3</label><input type="date" name="scheduleD3" value={biteSchedulePreview.d3} readOnly /></div>
                   </div>
                   <div className="input-row">
-                    <div className="input-group"><label>D7</label><input type="date" name="scheduleD7" /></div>
-                    <div className="input-group"><label>D28</label><input type="date" name="scheduleD28" /></div>
+                    <div className="input-group"><label>D7</label><input type="date" name="scheduleD7" value={biteSchedulePreview.d7} readOnly /></div>
+                    <div className="input-group"><label>D28</label><input type="date" name="scheduleD28" value={biteSchedulePreview.d28} readOnly /></div>
                   </div>
                   <div className="input-group consent-section">
                     <label>Consent for Treatment</label>
@@ -1330,19 +1417,30 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Vaccine Name</label>
-                      <select name="vaccine" required>
+                      <select
+                        name="vaccine"
+                        value={epiForm.vaccine_name}
+                        onChange={e => setEpiForm(prev => ({ ...prev, vaccine_name: e.target.value }))}
+                        required
+                      >
                         <option value="">Select Vaccine...</option>
                         {VACCINE_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </div>
                     <div className="input-group">
-                      <label>Dose Number</label>
-                      <input type="number" name="dose" defaultValue="1" min="1" required />
+                      <label>Route</label>
+                      <input value={epiForm.route} readOnly placeholder="Auto-set by vaccine" />
                     </div>
                   </div>
-                  <div className="input-group">
-                    <label>Scheduled Date</label>
-                    <input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Dose Number</label>
+                      <input type="number" name="dose" value={epiForm.dose_number} min="1" readOnly required />
+                    </div>
+                    <div className="input-group">
+                      <label>Scheduled Date</label>
+                      <input type="date" name="date" value={epiForm.scheduled_date} readOnly required />
+                    </div>
                   </div>
                 </div>
               )}
