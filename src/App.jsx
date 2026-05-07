@@ -21,12 +21,11 @@ import {
 } from "./api";
 
 const VACCINE_TYPES = [
-  "Hep B", "BCG (Bacillus Calmette-Guerin)", "OPV (Oral Polio Vaccine)",
-  "IPV (Inactivated Polio Vaccine)", "Pentavalent Vacc (DPT-HepB-Hib)",
-  "Rotavirus Vacc", "Measles", "MMR Vacc (Measles, Mumps, Rubella)",
+  "Hepatitis B Vaccine", "BCG (Bacillus Calmette-Guerin)", "OPV (Oral Polio Vaccine)",
+  "IPV (Inactivated Polio Vaccine)", "Pentavalent Vaccine (DPT-HepB-Hib)",
+  "Rotavirus Vaccine", "Measles", "MMR (Measles, Mumps, Rubella)",
   "TT1 (Tetanus Toxoid)", "TT2 (Tetanus Toxoid)", "TT3 (Tetanus Toxoid)",
-  "TT4 (Tetanus Toxoid)", "TT5 (Tetanus Toxoid)",
-  "PCV", "Anti-Rabies (Post-Exposure)", "Anti-Rabies (Pre-Exposure)"
+  "TT4 (Tetanus Toxoid)", "TT5 (Tetanus Toxoid)"
 ];
 
 const EPI_VACCINE_GROUPS = [
@@ -68,7 +67,7 @@ const EPI_VACCINE_GROUPS = [
   },
   {
     key: "mmr",
-    label: "MMR Vacc (Measles, Mumps, Rubella)",
+    label: "MMR (Measles, Mumps, Rubella)",
     group: "single",
     minimumAge: "1 year +",
     requiredDoses: 1,
@@ -95,7 +94,7 @@ const EPI_VACCINE_GROUPS = [
   },
   {
     key: "pentavalent",
-    label: "Pentavalent Vacc (DPT-HepB-Hib)",
+    label: "Pentavalent Vaccine (DPT-HepB-Hib)",
     group: "multi",
     minimumAge: "6 weeks",
     requiredDoses: 3,
@@ -104,7 +103,7 @@ const EPI_VACCINE_GROUPS = [
   },
   {
     key: "rotavirus",
-    label: "Rotavirus Vacc",
+    label: "Rotavirus Vaccine",
     group: "multi",
     minimumAge: "6 weeks",
     requiredDoses: 2,
@@ -137,7 +136,6 @@ function getEpiVaccineKey(immunization = {}) {
   if (name.includes("measles")) return "measles";
   if (name.includes("tt1") || name.includes("tt2") || name.includes("tt3") || name.includes("tt4") || name.includes("tt5")) return "tt";
   if (name.includes("tetanus")) return "tt";
-  if (name.includes("pcv")) return "pcv";
   return null;
 }
 
@@ -156,21 +154,49 @@ const EPI_ROUTE_BY_VACCINE_KEY = {
   "rotavirus": "Oral",
   "measles": "SC",
   "mmr": "SC",
-  "tt": "IM",
-  "pcv": "IM"
+  "tt": "IM"
 };
 const EPI_INTERVAL_DAYS_BY_VACCINE_KEY = {
-  "hep-b": 28,
-  "bcg": 28,
+  "hep-b": 0,
+  "bcg": 0,
   "opv": 28,
-  "ipv": 28,
+  "ipv": 0,
   "pentavalent": 28,
   "rotavirus": 28,
-  "measles": 30,
-  "mmr": 30,
-  "tt": 28,
-  "pcv": 28
+  "measles": 0,
+  "mmr": 0,
+  "tt": 28
 };
+const EPI_MAX_DOSES_BY_VACCINE_KEY = {
+  "hep-b": 1,
+  "bcg": 1,
+  "opv": 3,
+  "ipv": 1,
+  "pentavalent": 3,
+  "rotavirus": 2,
+  "measles": 1,
+  "mmr": 1,
+  "tt": 5
+};
+const EPI_INTERVAL_LABEL_BY_VACCINE_KEY = {
+  "hep-b": "Single dose (birth)",
+  "bcg": "Single dose (birth/anytime after birth)",
+  "opv": "Every 4 weeks (3 doses)",
+  "ipv": "Single dose; with OPV 3 if possible",
+  "pentavalent": "Every 4 weeks (3 doses)",
+  "rotavirus": "Every 4 weeks (2 doses)",
+  "measles": "Single dose at 9 months",
+  "mmr": "Single dose at 1 year +",
+  "tt": "TT2:+4w, TT3:+6m, TT4:+1y, TT5:+1y"
+};
+
+function getTtIntervalDaysForNextDose(nextDoseNumber) {
+  if (nextDoseNumber <= 1) return 0;
+  if (nextDoseNumber === 2) return 28;
+  if (nextDoseNumber === 3) return 182;
+  if (nextDoseNumber === 4) return 365;
+  return 365;
+}
 
 const ANIMAL_GROUPS = ["Dogs", "Cats", "Rats", "Others"];
 
@@ -306,22 +332,41 @@ export default function App() {
     if (!epiForm.vaccine_name) return;
     const key = getEpiVaccineKey({ vaccine_name: epiForm.vaccine_name });
     const route = EPI_ROUTE_BY_VACCINE_KEY[key] || "IM";
-    const intervalDays = EPI_INTERVAL_DAYS_BY_VACCINE_KEY[key] || 28;
+    const intervalDays = EPI_INTERVAL_DAYS_BY_VACCINE_KEY[key] ?? 28;
+    const maxDoses = EPI_MAX_DOSES_BY_VACCINE_KEY[key] || 1;
     const targetPatientId = editingId || null;
     let nextDoseNumber = 1;
     let nextDate = new Date().toISOString().split("T")[0];
 
     if (targetPatientId) {
-      const sameVaccineRecords = immunizations
-        .filter((imm) => imm.patient_id === targetPatientId && imm.vaccine_name === epiForm.vaccine_name)
+      const sameSeriesRecords = immunizations
+        .filter((imm) => imm.patient_id === targetPatientId && getEpiVaccineKey(imm) === key)
         .sort((a, b) => Number(a.dose_number || 1) - Number(b.dose_number || 1));
-      if (sameVaccineRecords.length > 0) {
-        const last = sameVaccineRecords[sameVaccineRecords.length - 1];
-        nextDoseNumber = Number(last.dose_number || 0) + 1;
+
+      if (sameSeriesRecords.length > 0) {
+        const last = sameSeriesRecords[sameSeriesRecords.length - 1];
+        const lastDose = Number(last.dose_number || 0);
+        nextDoseNumber = lastDose + 1;
+        if (lastDose >= maxDoses) nextDoseNumber = maxDoses;
+
         const base = new Date(last.administered_date || last.scheduled_date || new Date());
         if (!Number.isNaN(base.getTime())) {
-          base.setDate(base.getDate() + intervalDays);
+          const addDays = key === "tt"
+            ? getTtIntervalDaysForNextDose(nextDoseNumber)
+            : intervalDays;
+          base.setDate(base.getDate() + addDays);
           nextDate = base.toISOString().split("T")[0];
+        }
+      }
+
+      if (key === "ipv") {
+        const opvRecords = immunizations
+          .filter((imm) => imm.patient_id === targetPatientId && getEpiVaccineKey(imm) === "opv")
+          .sort((a, b) => Number(a.dose_number || 1) - Number(b.dose_number || 1));
+        const opv3 = opvRecords.find((imm) => Number(imm.dose_number || 0) === 3);
+        if (opv3) {
+          const opv3Date = opv3.administered_date || opv3.scheduled_date;
+          if (opv3Date) nextDate = opv3Date;
         }
       }
     }
@@ -454,6 +499,14 @@ export default function App() {
           }
         );
       } else if (logType === 'epi') {
+        const epiKey = getEpiVaccineKey({ vaccine_name: epiForm.vaccine_name });
+        const maxDoses = EPI_MAX_DOSES_BY_VACCINE_KEY[epiKey] || 1;
+        const existingSeriesCount = immunizations.filter(
+          (imm) => imm.patient_id === savedPatient.id && getEpiVaccineKey(imm) === epiKey
+        ).length;
+        if (existingSeriesCount >= maxDoses) {
+          throw new Error(`All required doses already scheduled for ${epiForm.vaccine_name}.`);
+        }
         const routeNote = epiForm.route ? `Route: ${epiForm.route}` : null;
         await createImmunization({
           patient_id: savedPatient.id,
@@ -762,6 +815,9 @@ export default function App() {
   const notificationCount = reminderItems.filter(r => r.level === "overdue").length || reminderItems.length;
   const patientAge = getAgeFromDateOfBirth(patientForm.date_of_birth);
   const isMinorPatient = patientAge !== null && patientAge < 18;
+  const epiSelectedKey = getEpiVaccineKey({ vaccine_name: epiForm.vaccine_name });
+  const epiDoseGuide = epiSelectedKey ? EPI_INTERVAL_LABEL_BY_VACCINE_KEY[epiSelectedKey] : "";
+  const epiMaxDoses = epiSelectedKey ? (EPI_MAX_DOSES_BY_VACCINE_KEY[epiSelectedKey] || 1) : 1;
 
   function handleNotificationClick(item) {
     setShowHeaderNotifications(false);
@@ -1321,6 +1377,7 @@ export default function App() {
 
               {logType === 'bite' && (
                 <div className="clinical-panel clinical-panel-bite">
+                  <h3 style={{ marginBottom: "0.75rem" }}>Animal Bite Treatment Center Intake Form</h3>
                   <div className="input-row">
                     <div className="input-group">
                       <label>Registration No.</label>
@@ -1331,6 +1388,31 @@ export default function App() {
                       <input type="date" name="dateRegistered" defaultValue={new Date().toISOString().split('T')[0]} />
                     </div>
                   </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Name</label>
+                      <input value={patientForm.full_name} readOnly />
+                    </div>
+                    <div className="input-group">
+                      <label>Sex</label>
+                      <input value={patientForm.sex || ""} readOnly />
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Address</label>
+                      <input value={patientForm.address || ""} readOnly />
+                    </div>
+                    <div className="input-group">
+                      <label>Date of Birth</label>
+                      <input value={patientForm.date_of_birth || ""} readOnly />
+                    </div>
+                    <div className="input-group">
+                      <label>Age</label>
+                      <input value={patientAge ?? ""} readOnly />
+                    </div>
+                  </div>
+                  <h4 style={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}>History of Exposure</h4>
                   <div className="input-row">
                     <div className="input-group">
                       <label>Date of Exposure</label>
@@ -1352,8 +1434,12 @@ export default function App() {
                       </select>
                     </div>
                     <div className="input-group">
-                      <label>Incident Date</label>
-                      <input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                      <label>Type of Exposure</label>
+                      <select name="typeOfExposure" required>
+                        <option value="Bitten">Bitten</option>
+                        <option value="Scratched">Scratched</option>
+                        <option value="Licked on broken skin">Licked on broken skin</option>
+                      </select>
                     </div>
                   </div>
                   {biteAnimalType === "Other" && (
@@ -1362,22 +1448,13 @@ export default function App() {
                       <input name="otherAnimal" placeholder="Type animal name" required />
                     </div>
                   )}
-                  <div className="input-group">
-                    <label>Type of Exposure</label>
-                    <select name="typeOfExposure" required>
-                      <option value="Bitten">Bitten</option>
-                      <option value="Scratched">Scratched</option>
-                      <option value="Licked on broken skin">Licked on broken skin</option>
-                    </select>
-                  </div>
                   <div className="input-row">
                     <div className="input-group">
-                      <label>Source Vaccination Status</label>
-                      <select name="sourceVaccinationStatus" defaultValue="">
-                        <option value="">Select</option>
-                        <option value="N">N (No)</option>
-                        <option value="S">S (Yes/Seen Vaccinated)</option>
-                      </select>
+                      <label>Source Vaccination Status (N/S)</label>
+                      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginTop: "0.4rem" }}>
+                        <label className="radio-label"><input type="radio" name="sourceVaccinationStatus" value="N" /> N</label>
+                        <label className="radio-label"><input type="radio" name="sourceVaccinationStatus" value="S" /> S</label>
+                      </div>
                     </div>
                     <div className="input-group">
                       <label>Animal Status after 14 Days</label>
@@ -1405,9 +1482,9 @@ export default function App() {
                   <div className="input-group">
                     <label>Post-Exposure Prophylaxis</label>
                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                      <label className="radio-label"><input type="checkbox" name="woundWashingDone" defaultChecked /> Wound Washing</label>
-                      <label className="radio-label"><input type="checkbox" name="rigGiven" /> RIG</label>
-                      <label className="radio-label"><input type="checkbox" name="arvGiven" defaultChecked /> Anti-Rabies Vaccine</label>
+                      <label className="radio-label"><input type="checkbox" name="woundWashingDone" defaultChecked /> A. Washing of Bite Wound</label>
+                      <label className="radio-label"><input type="checkbox" name="rigGiven" /> B. RIG</label>
+                      <label className="radio-label"><input type="checkbox" name="arvGiven" defaultChecked /> C. Anti-Rabies Vaccine</label>
                     </div>
                   </div>
                   <div className="input-row">
@@ -1499,6 +1576,11 @@ export default function App() {
                       <input type="date" name="date" value={epiForm.scheduled_date} readOnly required />
                     </div>
                   </div>
+                  {epiForm.vaccine_name && (
+                    <div className="consent-hint">
+                      {`Dose guide: ${epiDoseGuide}. Max doses: ${epiMaxDoses}.`}
+                    </div>
+                  )}
                 </div>
               )}
 
