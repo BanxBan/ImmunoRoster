@@ -1340,6 +1340,147 @@ button.secondary:hover {
   padding-top: 0.75rem;
 }
 
+/* Vaccine Card Table */
+.vc-scroll {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid #b6d4c8;
+  box-shadow: 0 4px 16px rgba(15, 80, 60, 0.08);
+}
+
+.vc-table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  min-width: 720px;
+  width: 100%;
+}
+
+.vc-table thead tr {
+  background: linear-gradient(135deg, #0d7a5f 0%, #1a9e78 100%);
+  color: #fff;
+}
+
+.vc-table th {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.7rem 0.5rem;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vc-th-name {
+  min-width: 170px;
+  text-align: left !important;
+  padding-left: 0.85rem !important;
+}
+
+.vc-th-doses { min-width: 50px; }
+.vc-th-date { min-width: 88px; }
+.vc-th-remarks { min-width: 80px; }
+
+.vc-table tbody tr {
+  border-bottom: 1px solid #e2ede8;
+  transition: background 0.15s;
+}
+
+.vc-table tbody tr:nth-child(even) {
+  background: #f5faf8;
+}
+
+.vc-table tbody tr:hover {
+  background: #e8f5ef;
+}
+
+.vc-row-done {
+  background: #eefbf4 !important;
+}
+
+.vc-table td {
+  padding: 0.65rem 0.5rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.vc-name {
+  font-weight: 700;
+  text-align: left !important;
+  padding-left: 0.85rem !important;
+  color: #1e3a2f;
+}
+
+.vc-doses-cell {
+  text-align: center;
+}
+
+.vc-dose-badge {
+  align-items: center;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  height: 1.5rem;
+  justify-content: center;
+  min-width: 1.5rem;
+}
+
+.vc-date-cell {
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.vc-date-done {
+  background: #dcfce7 !important;
+  color: #166534;
+  font-weight: 800;
+}
+
+.vc-date-pending {
+  background: #fef9c3 !important;
+  color: #92400e;
+  font-weight: 700;
+}
+
+.vc-date-na {
+  background: #f1f5f9 !important;
+  color: #cbd5e1;
+}
+
+.vc-remarks-cell {
+  text-align: center;
+}
+
+.vc-remark-badge {
+  border-radius: 20px;
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.7rem;
+  text-transform: uppercase;
+}
+
+.vc-remark-done {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+.vc-remark-pending {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+}
+
+.vc-remark-none {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
 .registry-card-bite {
   background: linear-gradient(180deg, #fff8f8 0%, #ffffff 100%);
   border-color: #fecaca;

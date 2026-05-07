@@ -855,6 +855,31 @@ export default function App() {
       .sort((a, b) => new Date(b.administered_date || b.scheduled_date) - new Date(a.administered_date || a.scheduled_date))
       .slice(0, 8);
   }, [immunizations, selectedRegistryHistoryPatientId]);
+  const selectedRegistryVaccineCard = useMemo(() => {
+    if (!selectedRegistryHistoryPatientId) return [];
+    const patientImms = immunizations.filter(
+      i => i.patient_id === selectedRegistryHistoryPatientId && !isAntiRabiesImmunization(i)
+    );
+    return EPI_VACCINE_GROUPS.map(vaccine => {
+      const vaccineImms = patientImms
+        .filter(imm => getEpiVaccineKey(imm) === vaccine.key)
+        .sort((a, b) => Number(a.dose_number || 1) - Number(b.dose_number || 1));
+      const doses = [];
+      for (let d = 1; d <= vaccine.requiredDoses; d++) {
+        const record = vaccineImms.find(imm => Number(imm.dose_number || 1) === d);
+        doses.push({
+          doseNumber: d,
+          date: record ? (record.administered_date || record.scheduled_date || "") : "",
+          status: record ? record.status : null,
+          record
+        });
+      }
+      const allCompleted = doses.length > 0 && doses.every(d => d.status === 'completed');
+      const hasAnyRecord = doses.some(d => d.record);
+      const remarks = !hasAnyRecord ? "—" : allCompleted ? "Done" : "Pending";
+      return { ...vaccine, doses, remarks, allCompleted, hasAnyRecord };
+    });
+  }, [immunizations, selectedRegistryHistoryPatientId]);
   const reminderItems = useMemo(() => {
     const today = new Date();
     return [...immunizations]
@@ -2170,29 +2195,54 @@ export default function App() {
           </div>
           {selectedRegistryHistoryPatient && (
             <div className="registry-modal-backdrop" onClick={() => setSelectedRegistryHistoryPatientId(null)}>
-              <div className="registry-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="registry-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '980px' }}>
                 <div className="registry-modal-header">
                   <h3>{selectedRegistryHistoryPatient.full_name}</h3>
                   <span className="data-sub">
-                    {selectedRegistryHistoryPatient.sex || "N/A"} • {selectedRegistryHistoryPatient.barangay || "Unknown Barangay"}
+                    {selectedRegistryHistoryPatient.sex || "N/A"} • DOB: {selectedRegistryHistoryPatient.date_of_birth || "N/A"} • {selectedRegistryHistoryPatient.barangay || "Unknown Barangay"}
                   </span>
                 </div>
                 <div className="registry-modal-body">
-                  <h4 style={{ margin: 0 }}>EPI History & Details</h4>
-                  <div className="data-list" style={{ marginTop: "0.75rem" }}>
-                    {selectedRegistryRecentDoses.map(dose => (
-                      <div key={`registry-dose-${dose.id}`} className="data-item">
-                        <div className="data-main">
-                          <span className="data-title">{dose.vaccine_name} (Dose {dose.dose_number})</span>
-                          <span className="data-sub">Scheduled: {dose.scheduled_date || "N/A"}</span>
-                          <span className="data-sub">Administered: {dose.administered_date || "Not yet"}</span>
-                        </div>
-                        <span className={`badge badge-${dose.status}`}>{dose.status}</span>
-                      </div>
-                    ))}
-                    {selectedRegistryRecentDoses.length === 0 && (
-                      <p className="registry-empty">No EPI dose records for this patient yet.</p>
-                    )}
+                  <h4 style={{ margin: '0 0 0.75rem' }}>📋 Immunization Record (Bakuna)</h4>
+                  <div className="vc-scroll">
+                    <table className="vc-table">
+                      <thead>
+                        <tr>
+                          <th className="vc-th-name">Bakuna (Vaccine)</th>
+                          <th className="vc-th-doses">Doses</th>
+                          {[1,2,3,4,5].map(n => (
+                            <th key={n} className="vc-th-date">Dose {n}</th>
+                          ))}
+                          <th className="vc-th-remarks">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedRegistryVaccineCard.map(vaccine => (
+                          <tr key={vaccine.key} className={vaccine.allCompleted ? 'vc-row-done' : ''}>
+                            <td className="vc-name">{vaccine.label}</td>
+                            <td className="vc-doses-cell"><span className="vc-dose-badge">{vaccine.requiredDoses}</span></td>
+                            {[1,2,3,4,5].map(doseNum => {
+                              const dose = vaccine.doses.find(d => d.doseNumber === doseNum);
+                              const isNA = doseNum > vaccine.requiredDoses;
+                              return (
+                                <td key={doseNum} className={`vc-date-cell ${isNA ? 'vc-date-na' : ''} ${dose?.status === 'completed' ? 'vc-date-done' : dose?.status ? 'vc-date-pending' : ''}`}>
+                                  {isNA ? '' : (dose?.date || '—')}
+                                </td>
+                              );
+                            })}
+                            <td className="vc-remarks-cell">
+                              {vaccine.remarks !== '—' ? (
+                                <span className={`vc-remark-badge ${vaccine.remarks === 'Done' ? 'vc-remark-done' : 'vc-remark-pending'}`}>
+                                  {vaccine.remarks}
+                                </span>
+                              ) : (
+                                <span className="vc-remark-none">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
                 <div className="registry-modal-actions">
