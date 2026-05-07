@@ -28,6 +28,7 @@ const VACCINE_TYPES = [
   "TT4 (Tetanus Toxoid)", "TT5 (Tetanus Toxoid)"
 ];
 
+
 const EPI_VACCINE_GROUPS = [
   {
     key: "hep-b",
@@ -119,6 +120,8 @@ const EPI_VACCINE_GROUPS = [
     minimumInterval: "Per TT schedule",
     description: "Maternal tetanus toxoid series. Completion requires TT1 through TT5."
   }
+
+  
 ];
 
 function getEpiVaccineKey(immunization = {}) {
@@ -1834,12 +1837,12 @@ export default function App() {
                           await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
                           loadAllData();
                         }}>Mark Done</button>
-                        <button
+                        {/* <button
                           className="secondary registry-action-btn"
                           onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}
                         >
                           Details
-                        </button>
+                        </button> */}
                         <button 
                           className="secondary registry-action-btn action-btn-danger"
                           onClick={async () => { if(confirm("Delete this record?")) { await deleteImmunization(imm.id); loadAllData(); } }}
