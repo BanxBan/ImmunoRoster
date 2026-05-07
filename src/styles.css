@@ -902,6 +902,52 @@ header h1 {
   gap: 1rem 1.5rem;
 }
 
+.activity-choice {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  transition: all 0.15s ease;
+}
+
+.activity-choice:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.activity-choice.active {
+  background: #eef2ff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(67, 56, 202, 0.12);
+}
+
+.activity-choice-icon {
+  align-items: center;
+  background: #e2e8f0;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  height: 1.75rem;
+  justify-content: center;
+  min-width: 1.75rem;
+}
+
+.activity-choice.active .activity-choice-icon {
+  background: #c7d2fe;
+  color: #312e81;
+}
+
+.activity-choice-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .clinical-panel {
   background: #f8fafc;
   border-left: 4px solid var(--primary);

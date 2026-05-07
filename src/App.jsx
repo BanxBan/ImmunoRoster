@@ -1324,55 +1324,29 @@ export default function App() {
           <section ref={formRef} className="card" style={{ margin: 0 }}>
             <h2>{editingId ? "Edit Profile & Clinical Log" : "Register Patient"}</h2>
             <form onSubmit={savePatient} className="form-grid">
-              <div className="input-group">
-                <label>Full Name</label>
-                <input value={patientForm.full_name} onChange={e => setPatientForm({...patientForm, full_name: e.target.value})} required />
-              </div>
-              <div className="input-row">
-                <div className="input-group">
-                  <label>DOB</label>
-                  <input type="date" value={patientForm.date_of_birth} onChange={e => setPatientForm({...patientForm, date_of_birth: e.target.value})} required />
-                </div>
-                <div className="input-group">
-                  <label>Sex</label>
-                  <select value={patientForm.sex} onChange={e => setPatientForm({...patientForm, sex: e.target.value})}>
-                    <option value="">Select</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-              </div>
-              <div className="input-group">
-                <label>Barangay</label>
-                <input 
-                  list="barangay-list"
-                  value={patientForm.barangay} 
-                  onChange={e => setPatientForm({...patientForm, barangay: e.target.value})} 
-                  placeholder="Select or type new..."
-                />
-                <datalist id="barangay-list">
-                  {Array.from(new Set([
-                    ...globalStats.patients.map(p => p.barangay),
-                    ...globalStats.community.map(c => c.barangay)
-                  ])).filter(Boolean).sort().map(b => (
-                    <option key={b} value={b} />
-                  ))}
-                </datalist>
-              </div>
-              <hr style={{ margin: '1.5rem 0', borderTop: '1px solid var(--border)' }} />
               <div className="input-group activity-selector">
-                <label>Add Clinical Activity (Optional)</label>
+                <label>Choose Log Module</label>
                 <div className="activity-options">
-                  <label className="radio-label">
-                    <input type="radio" checked={logType === 'none'} onChange={() => setLogType('none')} /> None
-                  </label>
-                  <label className="radio-label">
-                    <input type="radio" checked={logType === 'epi'} onChange={() => setLogType('epi')} /> EPI (Immunization)
-                  </label>
-                  <label className="radio-label">
-                    <input type="radio" checked={logType === 'bite'} onChange={() => setLogType('bite')} /> Animal Bite Incident
-                  </label>
+                  <button
+                    type="button"
+                    className={`activity-choice ${logType === 'bite' ? 'active' : ''}`}
+                    onClick={() => setLogType('bite')}
+                  >
+                    <span className="activity-choice-icon">AB</span>
+                    <span className="activity-choice-text">Animal Bite Log</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`activity-choice ${logType === 'epi' ? 'active' : ''}`}
+                    onClick={() => setLogType('epi')}
+                  >
+                    <span className="activity-choice-icon">EPI</span>
+                    <span className="activity-choice-text">EPI Immunization</span>
+                  </button>
                 </div>
+                {logType !== 'bite' && logType !== 'epi' && (
+                  <div className="consent-hint">Click one icon to open its fill-up form.</div>
+                )}
               </div>
 
               {logType === 'bite' && (
@@ -1391,21 +1365,44 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Name</label>
-                      <input value={patientForm.full_name} readOnly />
+                      <input value={patientForm.full_name} onChange={e => setPatientForm({...patientForm, full_name: e.target.value})} required />
                     </div>
                     <div className="input-group">
                       <label>Sex</label>
-                      <input value={patientForm.sex || ""} readOnly />
+                      <select value={patientForm.sex} onChange={e => setPatientForm({...patientForm, sex: e.target.value})} required>
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
                     </div>
                   </div>
                   <div className="input-row">
                     <div className="input-group">
                       <label>Address</label>
-                      <input value={patientForm.address || ""} readOnly />
+                      <input value={patientForm.address || ""} onChange={e => setPatientForm({...patientForm, address: e.target.value})} />
                     </div>
                     <div className="input-group">
+                      <label>Barangay</label>
+                      <input
+                        list="barangay-list"
+                        value={patientForm.barangay}
+                        onChange={e => setPatientForm({...patientForm, barangay: e.target.value})}
+                        placeholder="Select or type new..."
+                      />
+                      <datalist id="barangay-list">
+                        {Array.from(new Set([
+                          ...globalStats.patients.map(p => p.barangay),
+                          ...globalStats.community.map(c => c.barangay)
+                        ])).filter(Boolean).sort().map(b => (
+                          <option key={b} value={b} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
                       <label>Date of Birth</label>
-                      <input value={patientForm.date_of_birth || ""} readOnly />
+                      <input type="date" value={patientForm.date_of_birth || ""} onChange={e => setPatientForm({...patientForm, date_of_birth: e.target.value})} required />
                     </div>
                     <div className="input-group">
                       <label>Age</label>
@@ -1548,6 +1545,42 @@ export default function App() {
 
               {logType === 'epi' && (
                 <div className="clinical-panel clinical-panel-epi">
+                  <div className="input-group">
+                    <label>Full Name</label>
+                    <input value={patientForm.full_name} onChange={e => setPatientForm({...patientForm, full_name: e.target.value})} required />
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>DOB</label>
+                      <input type="date" value={patientForm.date_of_birth} onChange={e => setPatientForm({...patientForm, date_of_birth: e.target.value})} required />
+                    </div>
+                    <div className="input-group">
+                      <label>Sex</label>
+                      <select value={patientForm.sex} onChange={e => setPatientForm({...patientForm, sex: e.target.value})}>
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Barangay</label>
+                    <input 
+                      list="barangay-list"
+                      value={patientForm.barangay} 
+                      onChange={e => setPatientForm({...patientForm, barangay: e.target.value})} 
+                      placeholder="Select or type new..."
+                    />
+                    <datalist id="barangay-list">
+                      {Array.from(new Set([
+                        ...globalStats.patients.map(p => p.barangay),
+                        ...globalStats.community.map(c => c.barangay)
+                      ])).filter(Boolean).sort().map(b => (
+                        <option key={b} value={b} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <hr style={{ margin: '1.2rem 0', borderTop: '1px solid var(--border)' }} />
                   <div className="input-row">
                     <div className="input-group">
                       <label>Vaccine Name</label>
