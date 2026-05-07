@@ -24,10 +24,6 @@ export default async function handler(req, res) {
       if (!id && barangay) query = query.eq("barangay", barangay.trim());
       if (!id && municipality) query = query.eq("municipality", municipality.trim());
 
-      // Filter by nurse if not admin
-      if (req.admin.role === 'nurse') {
-        query = query.eq("created_by", req.admin.sub);
-      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -40,7 +36,7 @@ export default async function handler(req, res) {
 
       const { data, error } = await supabaseAdmin
         .from("patients")
-        .insert({ ...validated.body, created_by: req.admin.sub })
+        .insert(validated.body)
         .select("*")
         .single();
 

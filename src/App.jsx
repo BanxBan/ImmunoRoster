@@ -2160,7 +2160,9 @@ export default function App() {
                 {registryEpiHistory.map(imm => (
                   <div key={`hx-epi-${imm.id}`} className="data-item">
                     <div className="data-main">
-                      <span className="data-title">{imm.patients?.full_name || "Unknown Patient"}</span>
+                      <button type="button" className="registry-link-btn" onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}>
+                        {imm.patients?.full_name || "Unknown Patient"}
+                      </button>
                       <span className="data-sub">
                         {imm.vaccine_name} (# {imm.dose_number}) • Completed: {imm.administered_date || imm.scheduled_date}
                       </span>
