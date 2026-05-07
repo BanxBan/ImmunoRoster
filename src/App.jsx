@@ -880,13 +880,16 @@ export default function App() {
       return { ...vaccine, doses, remarks, allCompleted, hasAnyRecord };
     });
   }, [immunizations, selectedRegistryHistoryPatientId]);
+  const todayISO = new Date().toLocaleDateString('en-CA');
   const reminderItems = useMemo(() => {
-    const today = new Date();
+    const todayDate = new Date(todayISO);
     return [...immunizations]
       .filter(imm => imm.status !== "completed" && imm.scheduled_date)
       .map(imm => {
-        const due = new Date(imm.scheduled_date);
-        const diffDays = Number.isNaN(due.getTime()) ? 999 : Math.floor((due - today) / (1000 * 60 * 60 * 24));
+        const scheduledDate = new Date(imm.scheduled_date);
+        // Normalize both to midnight for accurate day difference
+        const diffTime = scheduledDate.getTime() - todayDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         return { imm, diffDays };
       })
       .filter(({ diffDays }) => diffDays <= 7)
@@ -900,10 +903,10 @@ export default function App() {
         subtitle: `${imm.vaccine_name} (Dose ${imm.dose_number}) • ${diffDays < 0 ? `${Math.abs(diffDays)} day(s) overdue` : diffDays === 0 ? "due today" : `due in ${diffDays} day(s)`}`,
         dateLabel: imm.scheduled_date
       }));
-  }, [immunizations, patientById]);
-  const todayISO = new Date().toISOString().split("T")[0];
+  }, [immunizations, patientById, todayISO]);
   const dueTodayReminderItems = useMemo(() => {
-    return reminderItems.filter((r) => r.level !== "upcoming" ? false : r.dateLabel === todayISO);
+    // Include both overdue and due today items in the "Send Reminders" list
+    return reminderItems.filter((r) => r.dateLabel <= todayISO);
   }, [reminderItems, todayISO]);
   const dueTodayPatients = useMemo(() => {
     const byPatient = new Map();
@@ -2114,8 +2117,7 @@ export default function App() {
                 <div className="data-list">
                   {registryEpiActive.map(entry => {
                     const imm = entry.next_due;
-                    const today = new Date().toISOString().split('T')[0];
-                    const isDue = (imm.scheduled_date || "2999-12-31") <= today;
+                    const isDue = (imm.scheduled_date || "2999-12-31") <= todayISO;
                     return (
                       <div key={`epi-active-${entry.patient_id || imm.id}`} className={`data-item ${isDue ? 'due-alert' : ''}`} style={isDue ? { borderLeft: '4px solid #ef4444', background: '#fef2f2' } : {}}>
                         <div className="data-main">
