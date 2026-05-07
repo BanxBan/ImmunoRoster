@@ -74,6 +74,7 @@ export const animalBiteSchema = z.object({
   is_minor_patient: z.boolean().optional().nullable(),
   guardian_name: optionalSanitizedString,
   guardian_email: z.string().email().optional().nullable(),
+  guardian_contact_number: optionalSanitizedString,
   consent_given: z.boolean().optional().nullable(),
   consent_given_by: optionalSanitizedString,
   consent_statement: optionalSanitizedString,

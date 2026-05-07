@@ -455,12 +455,14 @@ export default function App() {
         const isMinor = age !== null && age < 18;
         const guardianName = String(fd.get("guardianName") || "").trim();
         const guardianEmail = String(fd.get("guardianEmail") || "").trim();
+        const guardianPhone = String(fd.get("guardianPhone") || "").trim();
         const guardianConsent = fd.get("guardianConsent") === "on";
         const adultConsent = fd.get("adultConsent") === "on";
 
         if (isMinor) {
           if (!guardianName) throw new Error("Guardian name is required for minors.");
           if (!guardianEmail) throw new Error("Guardian email is required for minors.");
+          if (!guardianPhone) throw new Error("Guardian phone number is required for minors.");
           if (!guardianConsent) throw new Error("Guardian consent is required for minors.");
         } else if (!adultConsent) {
           throw new Error("Patient consent is required for adults.");
@@ -499,6 +501,7 @@ export default function App() {
             is_minor_patient: isMinor,
             guardian_name: isMinor ? guardianName : null,
             guardian_email: isMinor ? guardianEmail : null,
+            guardian_contact_number: isMinor ? guardianPhone : null,
             consent_given: isMinor ? guardianConsent : adultConsent,
             consent_given_by: isMinor ? "guardian" : "patient",
             consent_statement: isMinor
@@ -1427,6 +1430,17 @@ export default function App() {
                   </div>
                   <div className="input-row">
                     <div className="input-group">
+                      <label>Phone Number (for reminders)</label>
+                      <input
+                        value={patientForm.contact_number || ""}
+                        onChange={e => setPatientForm({ ...patientForm, contact_number: e.target.value })}
+                        placeholder="e.g., 09xxxxxxxxx"
+                        inputMode="tel"
+                      />
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
                       <label>Address</label>
                       <input value={patientForm.address || ""} onChange={e => setPatientForm({...patientForm, address: e.target.value})} />
                     </div>
@@ -1572,6 +1586,12 @@ export default function App() {
                             <input type="email" name="guardianEmail" required={isMinorPatient} />
                           </div>
                         </div>
+                        <div className="input-row">
+                          <div className="input-group">
+                            <label>Parent/Guardian Phone Number (for reminders)</label>
+                            <input name="guardianPhone" placeholder="e.g., 09xxxxxxxxx" inputMode="tel" required={isMinorPatient} />
+                          </div>
+                        </div>
                         <label className="radio-label">
                           <input type="checkbox" name="guardianConsent" required={isMinorPatient} />
                           I am the parent/guardian and I allow this patient to receive treatment.
@@ -1597,6 +1617,15 @@ export default function App() {
                   <div className="input-group">
                     <label>Full Name</label>
                     <input value={patientForm.full_name} onChange={e => setPatientForm({...patientForm, full_name: e.target.value})} required />
+                  </div>
+                  <div className="input-group">
+                    <label>Phone Number (for reminders)</label>
+                    <input
+                      value={patientForm.contact_number || ""}
+                      onChange={e => setPatientForm({ ...patientForm, contact_number: e.target.value })}
+                      placeholder="e.g., 09xxxxxxxxx"
+                      inputMode="tel"
+                    />
                   </div>
                   <div className="input-row">
                     <div className="input-group">
@@ -1861,7 +1890,7 @@ export default function App() {
                     <div key={`epi-active-${entry.patient_id || imm.id}`} className={`data-item ${isDue ? 'due-alert' : ''}`} style={isDue ? { borderLeft: '4px solid #ef4444', background: '#fef2f2' } : {}}>
                       <div className="data-main">
                         <button type="button" className="registry-link-btn" onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}>
-                          {isDue && <span title="Due Today or Overdue">?? </span>}
+                          {isDue && <span title="Due today or overdue" style={{ fontWeight: 800, color: "#ef4444" }}>DUE </span>}
                           {entry.patient_name}
                         </button>
                         <span className="data-sub" style={{ fontSize: '0.75rem', fontWeight: isDue ? 700 : 400, color: isDue ? '#ef4444' : 'inherit' }}>

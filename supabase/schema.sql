@@ -131,6 +131,7 @@ create table if not exists public.animal_bites (
   is_minor_patient boolean,
   guardian_name text,
   guardian_email text,
+  guardian_contact_number text,
   consent_given boolean,
   consent_given_by text,
   consent_statement text,
@@ -145,6 +146,9 @@ create table if not exists public.animal_bites (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.animal_bites
+add column if not exists guardian_contact_number text;
 
 alter table public.animal_bites add column if not exists registration_no text;
 alter table public.animal_bites add column if not exists date_registered date;
