@@ -108,7 +108,32 @@ create table if not exists public.animal_bites (
   provider_id uuid references public.providers(id) on delete set null,
   animal_type text not null,
   incident_date date not null,
+  registration_no text,
+  date_registered date,
+  place_of_exposure text,
+  source_of_exposure text,
+  source_other_details text,
+  source_vaccination_status text,
+  status_of_animal_after_14_days text,
+  remarks text,
   severity_category text,
+  wound_washing_done boolean,
+  rig_given boolean,
+  anti_rabies_vaccine_given boolean,
+  vaccine_generic_name text,
+  vaccine_brand_name text,
+  vaccine_route text,
+  post_exposure_schedule text,
+  schedule_d0 date,
+  schedule_d3 date,
+  schedule_d7 date,
+  schedule_d28 date,
+  is_minor_patient boolean,
+  guardian_name text,
+  guardian_email text,
+  consent_given boolean,
+  consent_given_by text,
+  consent_statement text,
   treatment_protocol text,
   total_required_doses int not null default 4,
   doses_administered int not null default 0,
@@ -120,6 +145,32 @@ create table if not exists public.animal_bites (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.animal_bites add column if not exists registration_no text;
+alter table public.animal_bites add column if not exists date_registered date;
+alter table public.animal_bites add column if not exists place_of_exposure text;
+alter table public.animal_bites add column if not exists source_of_exposure text;
+alter table public.animal_bites add column if not exists source_other_details text;
+alter table public.animal_bites add column if not exists source_vaccination_status text;
+alter table public.animal_bites add column if not exists status_of_animal_after_14_days text;
+alter table public.animal_bites add column if not exists remarks text;
+alter table public.animal_bites add column if not exists wound_washing_done boolean;
+alter table public.animal_bites add column if not exists rig_given boolean;
+alter table public.animal_bites add column if not exists anti_rabies_vaccine_given boolean;
+alter table public.animal_bites add column if not exists vaccine_generic_name text;
+alter table public.animal_bites add column if not exists vaccine_brand_name text;
+alter table public.animal_bites add column if not exists vaccine_route text;
+alter table public.animal_bites add column if not exists post_exposure_schedule text;
+alter table public.animal_bites add column if not exists schedule_d0 date;
+alter table public.animal_bites add column if not exists schedule_d3 date;
+alter table public.animal_bites add column if not exists schedule_d7 date;
+alter table public.animal_bites add column if not exists schedule_d28 date;
+alter table public.animal_bites add column if not exists is_minor_patient boolean;
+alter table public.animal_bites add column if not exists guardian_name text;
+alter table public.animal_bites add column if not exists guardian_email text;
+alter table public.animal_bites add column if not exists consent_given boolean;
+alter table public.animal_bites add column if not exists consent_given_by text;
+alter table public.animal_bites add column if not exists consent_statement text;
 
 create table if not exists public.medications (
   id uuid primary key default gen_random_uuid(),

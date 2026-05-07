@@ -146,6 +146,7 @@ const BITE_PROTOCOLS = {
   "Thai Red Cross ID (0, 3, 7, 28)": [0, 3, 7, 28],
   "Booster (0, 3)": [0, 3]
 };
+const EXPOSURE_CATEGORIES = ["1", "2", "3"];
 
 const ANIMAL_GROUPS = ["Dogs", "Cats", "Rats", "Others"];
 
@@ -160,6 +161,17 @@ function getAnimalGroup(animalType = "") {
 function getExposureType(bite = {}) {
   const source = `${bite.severity_category || ""} ${bite.notes || ""} ${bite.animal_type || ""}`.toLowerCase();
   return source.includes("scratch") ? "scratched" : "bitten";
+}
+
+function getAgeFromDateOfBirth(dateOfBirth) {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const monthDiff = now.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
 }
 
 const initialPatientForm = {
@@ -195,6 +207,7 @@ export default function App() {
   const [showActiveBiteAlert, setShowActiveBiteAlert] = useState(false);
   const [biteAnimalType, setBiteAnimalType] = useState("Dog");
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
+  const [selectedHistoryPatientId, setSelectedHistoryPatientId] = useState(null);
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -304,10 +317,61 @@ export default function App() {
       }
       
       if (logType === 'bite') {
+        const age = getAgeFromDateOfBirth(patientForm.date_of_birth);
+        const isMinor = age !== null && age < 18;
+        const guardianName = String(fd.get("guardianName") || "").trim();
+        const guardianEmail = String(fd.get("guardianEmail") || "").trim();
+        const guardianConsent = fd.get("guardianConsent") === "on";
+        const adultConsent = fd.get("adultConsent") === "on";
+
+        if (isMinor) {
+          if (!guardianName) throw new Error("Guardian name is required for minors.");
+          if (!guardianEmail) throw new Error("Guardian email is required for minors.");
+          if (!guardianConsent) throw new Error("Guardian consent is required for minors.");
+        } else if (!adultConsent) {
+          throw new Error("Patient consent is required for adults.");
+        }
+
         const selectedAnimal = fd.get("animal");
         const customAnimal = String(fd.get("otherAnimal") || "").trim();
         const finalAnimal = selectedAnimal === "Other" ? customAnimal : selectedAnimal;
-        await generateBiteSchedule(savedPatient.id, finalAnimal, fd.get("date"), fd.get("protocol"), fd.get("exposure"));
+        await generateBiteSchedule(
+          savedPatient.id,
+          finalAnimal,
+          fd.get("dateOfExposure"),
+          fd.get("protocol"),
+          fd.get("typeOfExposure"),
+          {
+            registration_no: String(fd.get("registrationNo") || "").trim() || null,
+            date_registered: String(fd.get("dateRegistered") || "").trim() || null,
+            place_of_exposure: String(fd.get("placeOfExposure") || "").trim() || null,
+            source_of_exposure: selectedAnimal,
+            source_other_details: selectedAnimal === "Other" ? customAnimal : null,
+            source_vaccination_status: String(fd.get("sourceVaccinationStatus") || "").trim() || null,
+            status_of_animal_after_14_days: String(fd.get("animalStatus14Days") || "").trim() || null,
+            remarks: String(fd.get("remarks") || "").trim() || null,
+            severity_category: String(fd.get("categoryOfExposure") || "").trim() || null,
+            wound_washing_done: fd.get("woundWashingDone") === "on",
+            rig_given: fd.get("rigGiven") === "on",
+            anti_rabies_vaccine_given: fd.get("arvGiven") === "on",
+            vaccine_generic_name: String(fd.get("vaccineGenericName") || "").trim() || null,
+            vaccine_brand_name: String(fd.get("vaccineBrandName") || "").trim() || null,
+            vaccine_route: String(fd.get("vaccineRoute") || "").trim() || null,
+            post_exposure_schedule: protocolNameToLabel(fd.get("protocol")),
+            schedule_d0: String(fd.get("scheduleD0") || "").trim() || null,
+            schedule_d3: String(fd.get("scheduleD3") || "").trim() || null,
+            schedule_d7: String(fd.get("scheduleD7") || "").trim() || null,
+            schedule_d28: String(fd.get("scheduleD28") || "").trim() || null,
+            is_minor_patient: isMinor,
+            guardian_name: isMinor ? guardianName : null,
+            guardian_email: isMinor ? guardianEmail : null,
+            consent_given: isMinor ? guardianConsent : adultConsent,
+            consent_given_by: isMinor ? "guardian" : "patient",
+            consent_statement: isMinor
+              ? "I am the parent/guardian and I consent to the patient receiving treatment."
+              : "I consent to receiving treatment."
+          }
+        );
       } else if (logType === 'epi') {
         await createImmunization({
           patient_id: savedPatient.id,
@@ -327,7 +391,12 @@ export default function App() {
   }
 
   // Animal Bite Protocol Logic
-  async function generateBiteSchedule(patientId, animalType, incidentDate, protocolName, exposureType = "Bitten") {
+  function protocolNameToLabel(protocolName = "") {
+    if (!protocolName) return null;
+    return protocolName;
+  }
+
+  async function generateBiteSchedule(patientId, animalType, incidentDate, protocolName, exposureType = "Bitten", intake = {}) {
     const days = BITE_PROTOCOLS[protocolName];
     const incident = new Date(incidentDate);
     
@@ -340,7 +409,8 @@ export default function App() {
       treatment_protocol: protocolName,
       total_required_doses: days.length,
       doses_administered: 0,
-      treatment_status: 'pending'
+      treatment_status: 'pending',
+      ...intake
     });
 
     // Generate individual immunization doses
@@ -552,6 +622,24 @@ export default function App() {
       .sort((a, b) => new Date(b.administered_date || b.scheduled_date) - new Date(a.administered_date || a.scheduled_date))
       .slice(0, 12);
   }, [immunizations]);
+  const selectedHistoryPatient = useMemo(
+    () => patients.find(p => p.id === selectedHistoryPatientId) || null,
+    [patients, selectedHistoryPatientId]
+  );
+  const selectedPatientImmunizationHistory = useMemo(() => {
+    if (!selectedHistoryPatientId) return [];
+    return [...immunizations]
+      .filter(i => i.patient_id === selectedHistoryPatientId)
+      .sort((a, b) => new Date(b.administered_date || b.scheduled_date) - new Date(a.administered_date || a.scheduled_date));
+  }, [immunizations, selectedHistoryPatientId]);
+  const selectedPatientBiteHistory = useMemo(() => {
+    if (!selectedHistoryPatientId) return [];
+    return [...animalBites]
+      .filter(b => b.patient_id === selectedHistoryPatientId)
+      .sort((a, b) => new Date(b.incident_date) - new Date(a.incident_date));
+  }, [animalBites, selectedHistoryPatientId]);
+  const patientAge = getAgeFromDateOfBirth(patientForm.date_of_birth);
+  const isMinorPatient = patientAge !== null && patientAge < 18;
 
   if (!adminUser) {
     return (
@@ -1079,7 +1167,27 @@ export default function App() {
                 <div style={{ padding: '1.25rem', background: '#f8fafc', borderLeft: '4px solid var(--primary)', borderRadius: '4px', marginBottom: '1.5rem' }}>
                   <div className="input-row">
                     <div className="input-group">
-                      <label>Animal Type</label>
+                      <label>Registration No.</label>
+                      <input name="registrationNo" />
+                    </div>
+                    <div className="input-group">
+                      <label>Date Registered</label>
+                      <input type="date" name="dateRegistered" defaultValue={new Date().toISOString().split('T')[0]} />
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Date of Exposure</label>
+                      <input type="date" name="dateOfExposure" defaultValue={new Date().toISOString().split('T')[0]} required />
+                    </div>
+                    <div className="input-group">
+                      <label>Place of Exposure</label>
+                      <input name="placeOfExposure" placeholder="e.g., Barangay road/home" />
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Source of Exposure</label>
                       <select name="animal" value={biteAnimalType} onChange={e => setBiteAnimalType(e.target.value)} required>
                         <option value="Dog">Dog</option>
                         <option value="Cat">Cat</option>
@@ -1099,17 +1207,108 @@ export default function App() {
                     </div>
                   )}
                   <div className="input-group">
-                    <label>Incident Type</label>
-                    <select name="exposure" required>
+                    <label>Type of Exposure</label>
+                    <select name="typeOfExposure" required>
                       <option value="Bitten">Bitten</option>
                       <option value="Scratched">Scratched</option>
+                      <option value="Licked on broken skin">Licked on broken skin</option>
                     </select>
                   </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Source Vaccination Status</label>
+                      <select name="sourceVaccinationStatus" defaultValue="">
+                        <option value="">Select</option>
+                        <option value="N">N (No)</option>
+                        <option value="S">S (Yes/Seen Vaccinated)</option>
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label>Animal Status after 14 Days</label>
+                      <input name="animalStatus14Days" placeholder="Alive/Dead/Unknown" />
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Category of Exposure</label>
+                      <select name="categoryOfExposure" defaultValue="3">
+                        {EXPOSURE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label>Treatment Protocol</label>
+                      <select name="protocol" required>
+                        {Object.keys(BITE_PROTOCOLS).map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+                  </div>
                   <div className="input-group">
-                    <label>Treatment Protocol</label>
-                    <select name="protocol" required>
-                      {Object.keys(BITE_PROTOCOLS).map(p => <option key={p} value={p}>{p}</option>)}
+                    <label>Remarks</label>
+                    <input name="remarks" />
+                  </div>
+                  <div className="input-group">
+                    <label>Post-Exposure Prophylaxis</label>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <label className="radio-label"><input type="checkbox" name="woundWashingDone" defaultChecked /> Wound Washing</label>
+                      <label className="radio-label"><input type="checkbox" name="rigGiven" /> RIG</label>
+                      <label className="radio-label"><input type="checkbox" name="arvGiven" defaultChecked /> Anti-Rabies Vaccine</label>
+                    </div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>Vaccine Generic Name</label>
+                      <input name="vaccineGenericName" defaultValue="PVRV" />
+                    </div>
+                    <div className="input-group">
+                      <label>Brand Name</label>
+                      <input name="vaccineBrandName" defaultValue="SPEEDA" />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Route</label>
+                    <select name="vaccineRoute" defaultValue="ID">
+                      <option value="ID">ID</option>
+                      <option value="IM">IM</option>
                     </select>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group"><label>D0</label><input type="date" name="scheduleD0" /></div>
+                    <div className="input-group"><label>D3</label><input type="date" name="scheduleD3" /></div>
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group"><label>D7</label><input type="date" name="scheduleD7" /></div>
+                    <div className="input-group"><label>D28</label><input type="date" name="scheduleD28" /></div>
+                  </div>
+                  <div className="input-group" style={{ marginTop: '0.75rem' }}>
+                    <label>Consent for Treatment</label>
+                    {isMinorPatient ? (
+                      <>
+                        <div className="input-row">
+                          <div className="input-group">
+                            <label>Parent/Guardian Name</label>
+                            <input name="guardianName" required={isMinorPatient} />
+                          </div>
+                          <div className="input-group">
+                            <label>Parent/Guardian Email</label>
+                            <input type="email" name="guardianEmail" required={isMinorPatient} />
+                          </div>
+                        </div>
+                        <label className="radio-label">
+                          <input type="checkbox" name="guardianConsent" required={isMinorPatient} />
+                          I am the parent/guardian and I allow this patient to receive treatment.
+                        </label>
+                      </>
+                    ) : (
+                      <label className="radio-label">
+                        <input type="checkbox" name="adultConsent" />
+                        I allow and consent to receive treatment.
+                      </label>
+                    )}
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                      {patientAge === null
+                        ? "Set DOB to auto-detect if guardian consent is required."
+                        : `Patient age detected: ${patientAge} (${isMinorPatient ? "Minor" : "Adult"})`}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1153,12 +1352,60 @@ export default function App() {
                     <span className="data-sub">{p.barangay} • {p.date_of_birth}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => { setEditingId(p.id); setPatientForm(p); setLogType('epi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>+ Generate Sched / History</button>
+                    <button className="primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => { setEditingId(p.id); setPatientForm(p); setLogType('epi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>+ Generate Sched</button>
+                    <button
+                      className="secondary"
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                      onClick={() => {
+                        setSelectedHistoryPatientId(prev => prev === p.id ? null : p.id);
+                      }}
+                    >
+                      {selectedHistoryPatientId === p.id ? "Hide History" : "History"}
+                    </button>
                     <button className="secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: '#ef4444', color: '#ef4444' }} onClick={async () => { if(confirm("Delete patient?")) { await deletePatient(p.id); loadAllData(); } }}>Delete</button>
                   </div>
                 </div>
               ))}
             </div>
+            {selectedHistoryPatient && (
+              <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                <h3 style={{ marginTop: 0 }}>History: {selectedHistoryPatient.full_name}</h3>
+                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.5rem 0' }}>Vaccine History</h4>
+                    <div className="data-list">
+                      {selectedPatientImmunizationHistory.map(imm => (
+                        <div key={`patient-history-imm-${imm.id}`} className="data-item">
+                          <div className="data-main">
+                            <span className="data-title">{imm.vaccine_name} (Dose {imm.dose_number})</span>
+                            <span className="data-sub">Scheduled: {imm.scheduled_date || "N/A"}</span>
+                            <span className="data-sub">Given: {imm.administered_date || "Not yet"}</span>
+                          </div>
+                          <span className={`badge badge-${imm.status}`}>{imm.status}</span>
+                        </div>
+                      ))}
+                      {selectedPatientImmunizationHistory.length === 0 && <p className="registry-empty">No vaccine records.</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.5rem 0' }}>Animal Bite Treatment History</h4>
+                    <div className="data-list">
+                      {selectedPatientBiteHistory.map(bite => (
+                        <div key={`patient-history-bite-${bite.id}`} className="data-item">
+                          <div className="data-main">
+                            <span className="data-title">{bite.animal_type} • {bite.incident_date}</span>
+                            <span className="data-sub">Exposure: {bite.severity_category || "N/A"}</span>
+                            <span className="data-sub">Protocol: {bite.treatment_protocol || "N/A"}</span>
+                          </div>
+                          <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
+                        </div>
+                      ))}
+                      {selectedPatientBiteHistory.length === 0 && <p className="registry-empty">No animal bite treatment records.</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       )}
