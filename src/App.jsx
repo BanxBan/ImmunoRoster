@@ -260,6 +260,7 @@ export default function App() {
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
   const [selectedHistoryPatientId, setSelectedHistoryPatientId] = useState(null);
   const [selectedRegistryHistoryPatientId, setSelectedRegistryHistoryPatientId] = useState(null);
+  const [expandedEpiPatientId, setExpandedEpiPatientId] = useState(null);
   const [epiForm, setEpiForm] = useState({
     vaccine_name: "",
     route: "",
@@ -744,9 +745,16 @@ export default function App() {
       .slice(0, 5);
   }, [globalStats.animalBites, patientById, selectedBarangayFilter]);
   const registryAnimalBiteActive = useMemo(() => {
-    return [...animalBites]
+    const sorted = [...animalBites]
       .filter(b => b.treatment_status !== 'completed')
       .sort((a, b) => new Date(b.incident_date) - new Date(a.incident_date));
+    const seenPatients = new Set();
+    return sorted.filter((bite) => {
+      if (!bite.patient_id) return true;
+      if (seenPatients.has(bite.patient_id)) return false;
+      seenPatients.add(bite.patient_id);
+      return true;
+    });
   }, [animalBites]);
   const registryAnimalBiteHistory = useMemo(() => {
     return [...animalBites]
@@ -754,10 +762,31 @@ export default function App() {
       .slice(0, 12);
   }, [animalBites]);
   const registryEpiActive = useMemo(() => {
-    return [...immunizations]
+    const pending = [...immunizations]
       .filter(i => i.status !== 'completed')
-      .sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
-  }, [immunizations]);
+      .sort((a, b) => new Date(a.scheduled_date || "2999-12-31") - new Date(b.scheduled_date || "2999-12-31"));
+
+    const grouped = pending.reduce((acc, imm) => {
+      const key = imm.patient_id || `unknown-${imm.id}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(imm);
+      return acc;
+    }, {});
+
+    return Object.values(grouped)
+      .map((entries) => {
+        const ordered = [...entries].sort((a, b) => new Date(a.scheduled_date || "2999-12-31") - new Date(b.scheduled_date || "2999-12-31"));
+        const nextDue = ordered[0];
+        return {
+          patient_id: nextDue.patient_id,
+          patient_name: nextDue.patients?.full_name || patientById[nextDue.patient_id]?.full_name || "Unknown Patient",
+          next_due: nextDue,
+          pending_count: ordered.length,
+          pending_items: ordered
+        };
+      })
+      .sort((a, b) => new Date(a.next_due.scheduled_date || "2999-12-31") - new Date(b.next_due.scheduled_date || "2999-12-31"));
+  }, [immunizations, patientById]);
   const registryEpiHistory = useMemo(() => {
     return [...immunizations]
       .filter(i => i.status === 'completed')
@@ -1799,19 +1828,20 @@ export default function App() {
                 <span>{registryEpiActive.length} active</span>
               </div>
               <div className="data-list">
-                {registryEpiActive.map(imm => {
+                {registryEpiActive.map(entry => {
+                  const imm = entry.next_due;
                   const today = new Date().toISOString().split('T')[0];
-                  const isDue = imm.scheduled_date <= today;
+                  const isDue = (imm.scheduled_date || "2999-12-31") <= today;
                   return (
-                    <div key={imm.id} className={`data-item ${isDue ? 'due-alert' : ''}`} style={isDue ? { borderLeft: '4px solid #ef4444', background: '#fef2f2' } : {}}>
+                    <div key={`epi-active-${entry.patient_id || imm.id}`} className={`data-item ${isDue ? 'due-alert' : ''}`} style={isDue ? { borderLeft: '4px solid #ef4444', background: '#fef2f2' } : {}}>
                       <div className="data-main">
                         <span className="data-title">
                           {isDue && <span title="Due Today or Overdue">⚠️ </span>}
-                          {imm.patients?.full_name}
+                          {entry.patient_name}
                         </span>
                         <span className="data-sub">Next: {imm.vaccine_name} (# {imm.dose_number})</span>
                         <span className="data-sub" style={{ fontSize: '0.75rem', fontWeight: isDue ? 700 : 400, color: isDue ? '#ef4444' : 'inherit' }}>
-                          Status: Scheduled for {imm.scheduled_date}
+                          Status: Scheduled for {imm.scheduled_date} • {entry.pending_count} pending dose(s)
                         </span>
                       </div>
                       <div className="registry-row-actions">
@@ -1820,6 +1850,22 @@ export default function App() {
                           await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
                           loadAllData();
                         }}>Mark Done</button>
+                        <button
+                          className="secondary registry-action-btn"
+                          onClick={() => {
+                            setExpandedEpiPatientId(prev => prev === imm.patient_id ? null : imm.patient_id);
+                          }}
+                        >
+                          {expandedEpiPatientId === imm.patient_id ? "Hide Vaccines" : "View Vaccines"}
+                        </button>
+                        <button
+                          className="secondary registry-action-btn"
+                          onClick={() => {
+                            setSelectedRegistryHistoryPatientId(prev => prev === imm.patient_id ? null : imm.patient_id);
+                          }}
+                        >
+                          {selectedRegistryHistoryPatientId === imm.patient_id ? "Hide History" : "History"}
+                        </button>
                         <button 
                           className="secondary registry-action-btn action-btn-danger"
                           onClick={async () => { if(confirm("Delete this record?")) { await deleteImmunization(imm.id); loadAllData(); } }}
@@ -1827,6 +1873,15 @@ export default function App() {
                           Delete
                         </button>
                       </div>
+                      {expandedEpiPatientId === imm.patient_id && entry.pending_items.length > 1 && (
+                        <div style={{ width: "100%", marginTop: "0.65rem", paddingTop: "0.65rem", borderTop: "1px dashed var(--border)" }}>
+                          {entry.pending_items.slice(1).map((pending) => (
+                            <div key={`epi-pending-${pending.id}`} className="data-sub" style={{ marginBottom: "0.25rem" }}>
+                              • {pending.vaccine_name} (Dose {pending.dose_number}) - {pending.scheduled_date || "No date"}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
