@@ -229,6 +229,7 @@ export default function App() {
   const [showBiteDetails, setShowBiteDetails] = useState(false);
   const [showEpiDetails, setShowEpiDetails] = useState(false);
   const [showActiveBiteAlert, setShowActiveBiteAlert] = useState(false);
+  const [showHeaderNotifications, setShowHeaderNotifications] = useState(false);
   const [biteAnimalType, setBiteAnimalType] = useState("Dog");
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
   const [selectedHistoryPatientId, setSelectedHistoryPatientId] = useState(null);
@@ -737,8 +738,36 @@ export default function App() {
       .sort((a, b) => new Date(b.administered_date || b.scheduled_date) - new Date(a.administered_date || a.scheduled_date))
       .slice(0, 8);
   }, [immunizations, selectedRegistryHistoryPatientId]);
+  const reminderItems = useMemo(() => {
+    const today = new Date();
+    return [...immunizations]
+      .filter(imm => imm.status !== "completed" && imm.scheduled_date)
+      .map(imm => {
+        const due = new Date(imm.scheduled_date);
+        const diffDays = Number.isNaN(due.getTime()) ? 999 : Math.floor((due - today) / (1000 * 60 * 60 * 24));
+        return { imm, diffDays };
+      })
+      .filter(({ diffDays }) => diffDays <= 7)
+      .sort((a, b) => a.diffDays - b.diffDays)
+      .slice(0, 12)
+      .map(({ imm, diffDays }) => ({
+        id: imm.id,
+        patient_id: imm.patient_id,
+        level: diffDays < 0 ? "overdue" : "upcoming",
+        title: patientById[imm.patient_id]?.full_name || "Unknown Patient",
+        subtitle: `${imm.vaccine_name} (Dose ${imm.dose_number}) • ${diffDays < 0 ? `${Math.abs(diffDays)} day(s) overdue` : diffDays === 0 ? "due today" : `due in ${diffDays} day(s)`}`,
+        dateLabel: imm.scheduled_date
+      }));
+  }, [immunizations, patientById]);
+  const notificationCount = reminderItems.filter(r => r.level === "overdue").length || reminderItems.length;
   const patientAge = getAgeFromDateOfBirth(patientForm.date_of_birth);
   const isMinorPatient = patientAge !== null && patientAge < 18;
+
+  function handleNotificationClick(item) {
+    setShowHeaderNotifications(false);
+    setActiveTab("registry");
+    if (item?.patient_id) setSelectedRegistryHistoryPatientId(item.patient_id);
+  }
 
   if (!adminUser) {
     return (
@@ -802,7 +831,35 @@ export default function App() {
             <span className="badge badge-pending" style={{ padding: '0.2rem 0.6rem' }}>{adminUser.shift} Shift</span>
           </div>
         </div>
-        <button className="secondary" style={{ padding: '0.4rem 1rem' }} onClick={handleLogout}>Sign Out</button>
+        <div className="header-actions">
+          <div className="notif-wrap">
+            <button type="button" className="notif-btn" onClick={() => setShowHeaderNotifications(prev => !prev)} aria-label="Open reminders">
+              <span className="notif-icon">🔔</span>
+              {notificationCount > 0 && <span className="notif-count">{notificationCount}</span>}
+            </button>
+            {showHeaderNotifications && (
+              <div className="notif-dropdown">
+                <div className="notif-head">
+                  <strong>Notifications</strong>
+                  <span>{reminderItems.length} reminders</span>
+                </div>
+                <div className="notif-list">
+                  {reminderItems.map(item => (
+                    <button key={item.id} type="button" className={`notif-item notif-${item.level}`} onClick={() => handleNotificationClick(item)}>
+                      <div>
+                        <div className="notif-title">{item.title}</div>
+                        <div className="notif-sub">{item.subtitle}</div>
+                      </div>
+                      <div className="notif-date">{item.dateLabel}</div>
+                    </button>
+                  ))}
+                  {reminderItems.length === 0 && <div className="notif-empty">No upcoming reminders in the next 7 days.</div>}
+                </div>
+              </div>
+            )}
+          </div>
+          <button className="secondary" style={{ padding: '0.4rem 1rem' }} onClick={handleLogout}>Sign Out</button>
+        </div>
       </header>
 
       <nav className="nav-tabs">

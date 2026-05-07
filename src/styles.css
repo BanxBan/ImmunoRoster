@@ -55,6 +55,174 @@ header h1 {
   -webkit-text-fill-color: transparent;
 }
 
+.app-header {
+  position: relative;
+}
+
+.header-brand {
+  align-items: center;
+  display: flex;
+  min-width: 240px;
+  z-index: 1;
+}
+
+.header-brand h1 {
+  margin: 0;
+  text-align: left;
+  white-space: nowrap;
+  right: 20
+}
+
+.header-greeting {
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.header-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.notif-wrap {
+  position: relative;
+}
+
+.notif-btn {
+  align-items: center;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  padding: 0 0.8rem;
+  position: relative;
+}
+
+.notif-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.notif-count {
+  align-items: center;
+  background: #ef4444;
+  border-radius: 999px;
+  color: white;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 800;
+  height: 18px;
+  justify-content: center;
+  min-width: 18px;
+  padding: 0 0.3rem;
+  position: absolute;
+  right: -4px;
+  top: -4px;
+}
+
+.notif-dropdown {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  max-height: 420px;
+  overflow: hidden;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  width: min(380px, 88vw);
+  z-index: 20;
+}
+
+.notif-head {
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  padding: 0.8rem 0.9rem;
+}
+
+.notif-head span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.notif-list {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.notif-item {
+  align-items: flex-start;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  gap: 0.6rem;
+  justify-content: space-between;
+  text-align: left;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item:hover {
+  background: var(--primary-light);
+}
+
+.notif-overdue {
+  background: #fff1f2;
+}
+
+.notif-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.notif-sub {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+}
+
+.notif-date {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.notif-empty {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.9rem;
+  text-align: center;
+}
+
+.user-name-hero {
+  display: inline-block;
+  font-size: clamp(1.15rem, 2.3vw, 1.65rem);
+  letter-spacing: -0.01em;
+}
+
+.app-header .user-badge {
+  display: flex !important;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
 .nav-tabs {
   display: flex;
   gap: 1rem;
@@ -697,6 +865,24 @@ header h1 {
   gap: 1.5rem;
 }
 
+.section-helper {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: -0.75rem 0 1rem;
+}
+
+.form-subhead {
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  margin-bottom: -0.25rem;
+  padding-bottom: 0.6rem;
+  text-transform: uppercase;
+}
+
 .patients-layout {
   display: flex;
   flex-direction: column;
@@ -724,6 +910,17 @@ header h1 {
   padding: 1.25rem;
 }
 
+.panel-title {
+  border-bottom: 1px dashed var(--border);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
 .clinical-panel-bite {
   border-left-color: #2563eb;
 }
@@ -743,10 +940,18 @@ header h1 {
 }
 
 .form-actions {
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  position: sticky;
+  bottom: 0.65rem;
+  z-index: 3;
 }
 
 .input-row {
@@ -842,6 +1047,7 @@ button.secondary:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.8rem;
   transition: background 0.2s;
 }
 
@@ -890,6 +1096,7 @@ button.secondary:hover {
   background: #f8fafc;
   border: 1px solid var(--border);
   border-radius: 10px;
+  box-shadow: var(--shadow-sm);
   margin-top: 1rem;
   padding: 1rem;
 }
@@ -1041,6 +1248,29 @@ button.secondary:hover {
     gap: 1rem;
   }
 
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-brand {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .header-greeting {
+    left: auto;
+    position: static;
+    top: auto;
+    transform: none;
+    width: 100%;
+  }
+
+  .app-header .user-badge {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
   .nav-tabs {
     flex-wrap: wrap;
     justify-content: center;
@@ -1102,6 +1332,11 @@ button.secondary:hover {
 
   .action-btn {
     width: 100%;
+  }
+
+  .form-actions {
+    bottom: 0;
+    position: static;
   }
 
   .patient-history-grid {
