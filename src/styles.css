@@ -428,14 +428,14 @@ header h1 {
 
 .metric-card {
   align-items: center;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
+  background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #dbe7ff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
   display: flex;
   gap: 1rem;
   min-height: 128px;
-  padding: 1.5rem;
+  padding: 1.15rem 1.2rem;
 }
 
 .bite-metric {
@@ -457,8 +457,8 @@ header h1 {
 .metric-card-button:hover,
 .metric-card-button.active {
   border-color: var(--primary);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(67, 56, 202, 0.22);
+  transform: translateY(-2px);
 }
 
 .metric-content {
@@ -1211,6 +1211,55 @@ button.secondary:hover {
   grid-template-columns: 1fr 2fr;
 }
 
+.census-modern .census-intro {
+  background: linear-gradient(120deg, #eef4ff 0%, #f8fbff 100%);
+  border: 1px solid #d8e5ff;
+  border-radius: 14px;
+  color: #334155;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.census-modern .barangay-filter-bar {
+  margin-bottom: 1rem;
+}
+
+.census-modern .filter-chip {
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.census-modern .filter-chip.active {
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.25);
+}
+
+.census-modern .module-panel {
+  border: 1px solid #dbe7ff;
+  border-radius: 16px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.census-modern .module-panel-header {
+  border-bottom: 1px solid #e5edff;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.7rem;
+}
+
+.census-ring-card {
+  background: linear-gradient(160deg, #ffffff 0%, #eff6ff 100%);
+  border: 1px solid #dbe7ff;
+  border-radius: 16px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.census-ring-card-bite {
+  background: linear-gradient(160deg, #ffffff 0%, #fff5f5 100%);
+  border-color: #ffd7d7;
+}
+
 .registry-flow-header {
   align-items: flex-end;
   display: flex;
@@ -1231,6 +1280,64 @@ button.secondary:hover {
 
 .registry-card {
   border-width: 1px;
+}
+
+.registry-link-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 0;
+  text-align: left;
+}
+
+.registry-link-btn:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.registry-modal-backdrop {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 1000;
+}
+
+.registry-modal {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.35);
+  max-height: 85vh;
+  max-width: 760px;
+  overflow: auto;
+  padding: 1rem;
+  width: 100%;
+}
+
+.registry-modal-header {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.registry-modal-header h3 {
+  margin: 0 0 0.2rem 0;
+}
+
+.registry-modal-actions {
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
 }
 
 .registry-card-bite {

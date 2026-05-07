@@ -263,7 +263,6 @@ export default function App() {
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
   const [selectedHistoryPatientId, setSelectedHistoryPatientId] = useState(null);
   const [selectedRegistryHistoryPatientId, setSelectedRegistryHistoryPatientId] = useState(null);
-  const [expandedEpiPatientId, setExpandedEpiPatientId] = useState(null);
   const [epiForm, setEpiForm] = useState({
     vaccine_name: "",
     route: "",
@@ -789,7 +788,7 @@ export default function App() {
           pending_items: ordered
         };
       })
-      .sort((a, b) => new Date(a.next_due.scheduled_date || "2999-12-31") - new Date(b.next_due.scheduled_date || "2999-12-31"));
+      .sort((a, b) => a.patient_name.localeCompare(b.patient_name));
   }, [immunizations, patientById]);
   const registryEpiHistory = useMemo(() => {
     return [...immunizations]
@@ -962,7 +961,7 @@ export default function App() {
       {error && <div className="error-toast" onClick={() => setError("")}>{error}</div>}
 
       {activeTab === 'census' && (
-        <section>
+        <section className="census-modern">
           <div className="census-intro">
             This section presents the barangay trends and cumulative reported cases of selected vaccine-preventable diseases (VPDs) and animal bite incidents in {censusBarangayScope} up to the year {new Date().getFullYear()}.
           </div>
@@ -1223,7 +1222,7 @@ export default function App() {
 
           <div className="dashboard-grid">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div className="card" style={{ textAlign: 'center', margin: 0 }}>
+              <div className="card census-ring-card" style={{ textAlign: 'center', margin: 0 }}>
                 <h2>💉 Overall EPI Rate</h2>
                 <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
                   <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
@@ -1248,7 +1247,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="card" style={{ textAlign: 'center', margin: 0 }}>
+              <div className="card census-ring-card census-ring-card-bite" style={{ textAlign: 'center', margin: 0 }}>
                 <h2>🐕 Bite Treatment Rate</h2>
                 <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
                   <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
@@ -1733,26 +1732,6 @@ export default function App() {
               <h2>Clinical Registries (Active Cases)</h2>
             <span>Grouped into Animal Bite and EPI with Status and Hx sections</span>
           </div>
-          {selectedRegistryHistoryPatient && (
-            <div className="patient-history-panel" style={{ marginBottom: '1rem' }}>
-              <h3>Recent Doses: {selectedRegistryHistoryPatient.full_name}</h3>
-              <div className="data-list">
-                {selectedRegistryRecentDoses.map(dose => (
-                  <div key={`registry-dose-${dose.id}`} className="data-item">
-                    <div className="data-main">
-                      <span className="data-title">{dose.vaccine_name} (Dose {dose.dose_number})</span>
-                      <span className="data-sub">Scheduled: {dose.scheduled_date || "N/A"}</span>
-                      <span className="data-sub">Administered: {dose.administered_date || "Not yet"}</span>
-                    </div>
-                    <span className={`badge badge-${dose.status}`}>{dose.status}</span>
-                  </div>
-                ))}
-                {selectedRegistryRecentDoses.length === 0 && (
-                  <p className="registry-empty">No dose records for this patient yet.</p>
-                )}
-              </div>
-            </div>
-          )}
           <div className="dashboard-grid">
             <div className="card registry-card registry-card-bite">
               <h2>🐕 Animal Bite</h2>
@@ -1841,36 +1820,25 @@ export default function App() {
                   return (
                     <div key={`epi-active-${entry.patient_id || imm.id}`} className={`data-item ${isDue ? 'due-alert' : ''}`} style={isDue ? { borderLeft: '4px solid #ef4444', background: '#fef2f2' } : {}}>
                       <div className="data-main">
-                        <span className="data-title">
-                          {isDue && <span title="Due Today or Overdue">⚠️ </span>}
+                        <button type="button" className="registry-link-btn" onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}>
+                          {isDue && <span title="Due Today or Overdue">?? </span>}
                           {entry.patient_name}
-                        </span>
-                        <span className="data-sub">Next: {imm.vaccine_name} (# {imm.dose_number})</span>
+                        </button>
                         <span className="data-sub" style={{ fontSize: '0.75rem', fontWeight: isDue ? 700 : 400, color: isDue ? '#ef4444' : 'inherit' }}>
-                          Status: Scheduled for {imm.scheduled_date} • {entry.pending_count} pending dose(s)
+                          {entry.pending_count} pending dose(s)
                         </span>
                       </div>
                       <div className="registry-row-actions">
-                        <span className={`badge badge-${imm.status}`}>{imm.status}</span>
+                        <span className={`badge badge-${imm.status}`}>pending</span>
                         <button className="primary registry-action-btn" onClick={async () => {
                           await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
                           loadAllData();
                         }}>Mark Done</button>
                         <button
                           className="secondary registry-action-btn"
-                          onClick={() => {
-                            setExpandedEpiPatientId(prev => prev === imm.patient_id ? null : imm.patient_id);
-                          }}
+                          onClick={() => setSelectedRegistryHistoryPatientId(imm.patient_id)}
                         >
-                          {expandedEpiPatientId === imm.patient_id ? "Hide Vaccines" : "View Vaccines"}
-                        </button>
-                        <button
-                          className="secondary registry-action-btn"
-                          onClick={() => {
-                            setSelectedRegistryHistoryPatientId(prev => prev === imm.patient_id ? null : imm.patient_id);
-                          }}
-                        >
-                          {selectedRegistryHistoryPatientId === imm.patient_id ? "Hide History" : "History"}
+                          Details
                         </button>
                         <button 
                           className="secondary registry-action-btn action-btn-danger"
@@ -1879,19 +1847,9 @@ export default function App() {
                           Delete
                         </button>
                       </div>
-                      {expandedEpiPatientId === imm.patient_id && entry.pending_items.length > 1 && (
-                        <div style={{ width: "100%", marginTop: "0.65rem", paddingTop: "0.65rem", borderTop: "1px dashed var(--border)" }}>
-                          {entry.pending_items.slice(1).map((pending) => (
-                            <div key={`epi-pending-${pending.id}`} className="data-sub" style={{ marginBottom: "0.25rem" }}>
-                              • {pending.vaccine_name} (Dose {pending.dose_number}) - {pending.scheduled_date || "No date"}
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   );
-                })}
-                {registryEpiActive.length === 0 && (
+                })}                {registryEpiActive.length === 0 && (
                   <p className="registry-empty">No active EPI patients.</p>
                 )}
               </div>
@@ -1926,9 +1884,43 @@ export default function App() {
               </div>
             </div>
           </div>
+          {selectedRegistryHistoryPatient && (
+            <div className="registry-modal-backdrop" onClick={() => setSelectedRegistryHistoryPatientId(null)}>
+              <div className="registry-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="registry-modal-header">
+                  <h3>{selectedRegistryHistoryPatient.full_name}</h3>
+                  <span className="data-sub">
+                    {selectedRegistryHistoryPatient.sex || "N/A"} • {selectedRegistryHistoryPatient.barangay || "Unknown Barangay"}
+                  </span>
+                </div>
+                <div className="registry-modal-body">
+                  <h4 style={{ margin: 0 }}>EPI History & Details</h4>
+                  <div className="data-list" style={{ marginTop: "0.75rem" }}>
+                    {selectedRegistryRecentDoses.map(dose => (
+                      <div key={`registry-dose-${dose.id}`} className="data-item">
+                        <div className="data-main">
+                          <span className="data-title">{dose.vaccine_name} (Dose {dose.dose_number})</span>
+                          <span className="data-sub">Scheduled: {dose.scheduled_date || "N/A"}</span>
+                          <span className="data-sub">Administered: {dose.administered_date || "Not yet"}</span>
+                        </div>
+                        <span className={`badge badge-${dose.status}`}>{dose.status}</span>
+                      </div>
+                    ))}
+                    {selectedRegistryRecentDoses.length === 0 && (
+                      <p className="registry-empty">No EPI dose records for this patient yet.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="registry-modal-actions">
+                  <button className="primary" onClick={() => setSelectedRegistryHistoryPatientId(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+          )}
           </div>
         </section>
       )}
     </main>
   );
 }
+
