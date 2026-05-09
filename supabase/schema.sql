@@ -99,6 +99,7 @@ create table if not exists public.immunizations (
   id uuid primary key default gen_random_uuid(),
   patient_id uuid not null references public.patients(id) on delete cascade,
   provider_id uuid references public.providers(id) on delete set null,
+  created_by uuid references public.admin_users(id) on delete set null,
   vaccine_name text not null,
   dose_number int not null default 1,
   scheduled_date date,
@@ -106,6 +107,13 @@ create table if not exists public.immunizations (
   booster_interval_days int not null default 365,
   next_due_date date,
   status text not null default 'pending' check (status in ('pending', 'due', 'completed')),
+  is_minor_patient boolean,
+  guardian_name text,
+  guardian_email text,
+  guardian_contact_number text,
+  consent_given boolean,
+  consent_given_by text,
+  consent_statement text,
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -115,16 +123,26 @@ alter table public.immunizations
 drop constraint if exists immunizations_status_check;
 alter table public.immunizations
 add constraint immunizations_status_check check (status in ('pending', 'due', 'completed'));
+alter table public.immunizations add column if not exists is_minor_patient boolean;
+alter table public.immunizations add column if not exists guardian_name text;
+alter table public.immunizations add column if not exists guardian_email text;
+alter table public.immunizations add column if not exists guardian_contact_number text;
+alter table public.immunizations add column if not exists consent_given boolean;
+alter table public.immunizations add column if not exists consent_given_by text;
+alter table public.immunizations add column if not exists consent_statement text;
+alter table public.immunizations add column if not exists created_by uuid references public.admin_users(id) on delete set null;
 
 create table if not exists public.animal_bites (
   id uuid primary key default gen_random_uuid(),
   patient_id uuid not null references public.patients(id) on delete cascade,
   provider_id uuid references public.providers(id) on delete set null,
+  created_by uuid references public.admin_users(id) on delete set null,
   animal_type text not null,
   incident_date date not null,
   registration_no text,
   date_registered date,
   place_of_exposure text,
+  site_of_exposure text,
   source_of_exposure text,
   source_other_details text,
   source_vaccination_status text,
@@ -141,6 +159,8 @@ create table if not exists public.animal_bites (
   schedule_d0 date,
   schedule_d3 date,
   schedule_d7 date,
+  schedule_d14 date,
+  schedule_d21 date,
   schedule_d28 date,
   is_minor_patient boolean,
   guardian_name text,
@@ -167,6 +187,7 @@ add column if not exists guardian_contact_number text;
 alter table public.animal_bites add column if not exists registration_no text;
 alter table public.animal_bites add column if not exists date_registered date;
 alter table public.animal_bites add column if not exists place_of_exposure text;
+alter table public.animal_bites add column if not exists site_of_exposure text;
 alter table public.animal_bites add column if not exists source_of_exposure text;
 alter table public.animal_bites add column if not exists source_other_details text;
 alter table public.animal_bites add column if not exists source_vaccination_status text;
@@ -182,6 +203,8 @@ alter table public.animal_bites add column if not exists post_exposure_schedule 
 alter table public.animal_bites add column if not exists schedule_d0 date;
 alter table public.animal_bites add column if not exists schedule_d3 date;
 alter table public.animal_bites add column if not exists schedule_d7 date;
+alter table public.animal_bites add column if not exists schedule_d14 date;
+alter table public.animal_bites add column if not exists schedule_d21 date;
 alter table public.animal_bites add column if not exists schedule_d28 date;
 alter table public.animal_bites add column if not exists is_minor_patient boolean;
 alter table public.animal_bites add column if not exists guardian_name text;
@@ -189,6 +212,7 @@ alter table public.animal_bites add column if not exists guardian_email text;
 alter table public.animal_bites add column if not exists consent_given boolean;
 alter table public.animal_bites add column if not exists consent_given_by text;
 alter table public.animal_bites add column if not exists consent_statement text;
+alter table public.animal_bites add column if not exists created_by uuid references public.admin_users(id) on delete set null;
 
 create table if not exists public.medications (
   id uuid primary key default gen_random_uuid(),

@@ -3,45 +3,37 @@
 ## 1. Supabase Setup
 
 1. Create a new Supabase project.
-2. In SQL Editor, run `backend/supabase/schema.sql`.
-3. In Authentication:
+2. In SQL Editor, run `supabase/schema.sql`.
+3. For an existing production database, also run `supabase/production_patch.sql` so Vercel APIs can save the latest Animal Bite and EPI fields.
+4. In Authentication:
 - Create RHU users.
 - Add `app_metadata.role` values: `admin` or `health_worker`.
-4. In Project Settings > API, copy:
+5. In Project Settings > API, copy:
 - `SUPABASE_URL`
 - `anon` key
 - `service_role` key
 
 ## 2. Environment Variables
 
-Backend (`backend/.env` / Vercel backend project):
+Vercel environment variables:
 
 - `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `DATABASE_URL`
-- `FRONTEND_URL`
-- `CRON_SECRET`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
 
-Frontend (`frontend/.env` / Vercel frontend project):
+Optional local/frontend variables:
 
-- `VITE_API_BASE_URL` (backend Vercel URL)
-- `VITE_SUPABASE_URL` (optional if client auth is added)
-- `VITE_SUPABASE_ANON_KEY` (optional if client auth is added)
+- `VITE_API_BASE_URL` (leave blank for a single Vercel project that serves both frontend and `/api`)
 
-## 3. Vercel Projects
+## 3. Vercel Project
 
-Create two projects from one repo:
-
-1. Frontend
-- Root Directory: `frontend`
+Create one Vercel project from this repo:
+- Root Directory: project root
 - Build Command: `npm run build`
 - Output Directory: `dist`
-
-2. Backend
-- Root Directory: `backend`
-- Framework Preset: `Other`
-- Functions from `api/*.js` are auto-deployed
+- Framework Preset: `Vite`
+- Functions from `api/*.js` are auto-deployed by Vercel
 
 ## 4. API Endpoints
 

@@ -71,4 +71,4 @@ export function escapeHTML(str) {
  * Zod helper for sanitized strings.
  */
 export const sanitizedString = z.string().trim();
-export const optionalSanitizedString = z.string().trim().optional();
+export const optionalSanitizedString = z.string().trim().optional().nullable();

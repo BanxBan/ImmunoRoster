@@ -66,6 +66,9 @@ async function request(path, options = {}) {
       try {
         const data = await response.json();
         message = data.error || message;
+        if (data.details) {
+          message = `${message}: ${JSON.stringify(data.details)}`;
+        }
       } catch { /* keep default */ }
     }
     throw new Error(message);

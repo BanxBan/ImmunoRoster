@@ -1024,6 +1024,21 @@ label {
   color: var(--text-muted);
 }
 
+.radio-label {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.55rem;
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.radio-label input {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+}
+
 input, select, textarea {
   padding: 0.875rem;
   border-radius: 10px;

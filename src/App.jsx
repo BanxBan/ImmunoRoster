@@ -144,10 +144,20 @@ function getEpiVaccineKey(immunization = {}) {
 
 const BITE_PROTOCOLS = {
   "Standard IM (0, 3, 7, 14, 28)": [0, 3, 7, 14, 28],
-  "Thai Red Cross ID (0, 3, 7, 28)": [0, 3, 7, 28],
+  "Thai Red Cross ID/2-site regimen (0, 3, 7, 28)": [0, 3, 7, 28],
+  "Zagreb 2-1-1 (0, 7, 21)": [0, 7, 21],
   "Booster (0, 3)": [0, 3]
 };
 const EXPOSURE_CATEGORIES = ["1", "2", "3"];
+const RABIES_VACCINE_GENERIC_NAMES = [
+  "PVRV",
+  "Purified Rabies Vaccine (Vero Cell)",
+  "Rabies Vaccine (inactivated)"
+];
+const ADULT_CONSENT_STATEMENT =
+  "I voluntarily consent to medical treatment for EPI or Animal Bite management and authorize the electronic logging of my health data in the immunization Registry for community surveillance and continuity of care. By checking this box, I confirm that I am providing this authorization freely, officially notifying the attending nurse of my informed consent to proceed with both clinical treatment and digital documentaion.";
+const GUARDIAN_CONSENT_STATEMENT =
+  "I am the parent/guardian and I voluntarily consent to medical treatment for EPI or Animal Bite management for this patient and authorize the electronic logging of this patient's health data in the immunization Registry for community surveillance and continuity of care. By checking this box, I confirm that I am providing this authorization freely, officially notifying the attending nurse of my informed consent to proceed with both clinical treatment and digital documentaion.";
 const EPI_ROUTE_BY_VACCINE_KEY = {
   "hep-b": "IM",
   "bcg": "ID",
@@ -286,7 +296,7 @@ export default function App() {
   });
   const [biteDateOfExposure, setBiteDateOfExposure] = useState(new Date().toISOString().split('T')[0]);
   const [biteProtocol, setBiteProtocol] = useState(Object.keys(BITE_PROTOCOLS)[0]);
-  const [biteSchedulePreview, setBiteSchedulePreview] = useState({ d0: "", d3: "", d7: "", d28: "" });
+  const [biteSchedulePreview, setBiteSchedulePreview] = useState({ d0: "", d3: "", d7: "", d14: "", d21: "", d28: "" });
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -338,7 +348,7 @@ export default function App() {
     const incident = new Date(biteDateOfExposure);
     if (Number.isNaN(incident.getTime())) return;
     const days = BITE_PROTOCOLS[biteProtocol] || [];
-    const nextPreview = { d0: "", d3: "", d7: "", d28: "" };
+    const nextPreview = { d0: "", d3: "", d7: "", d14: "", d21: "", d28: "" };
     days.forEach((day) => {
       const dt = new Date(incident);
       dt.setDate(incident.getDate() + day);
@@ -346,6 +356,8 @@ export default function App() {
       if (day === 0) nextPreview.d0 = value;
       if (day === 3) nextPreview.d3 = value;
       if (day === 7) nextPreview.d7 = value;
+      if (day === 14) nextPreview.d14 = value;
+      if (day === 21) nextPreview.d21 = value;
       if (day === 28) nextPreview.d28 = value;
     });
     setBiteSchedulePreview(nextPreview);
@@ -503,11 +515,11 @@ export default function App() {
             registration_no: String(fd.get("registrationNo") || "").trim() || null,
             date_registered: String(fd.get("dateRegistered") || "").trim() || null,
             place_of_exposure: String(fd.get("placeOfExposure") || "").trim() || null,
+            site_of_exposure: String(fd.get("siteOfExposure") || "").trim() || null,
             source_of_exposure: selectedAnimal,
             source_other_details: selectedAnimal === "Other" ? customAnimal : null,
             source_vaccination_status: String(fd.get("sourceVaccinationStatus") || "").trim() || null,
             status_of_animal_after_14_days: String(fd.get("animalStatus14Days") || "").trim() || null,
-            remarks: String(fd.get("remarks") || "").trim() || null,
             severity_category: String(fd.get("categoryOfExposure") || "").trim() || null,
             wound_washing_done: fd.get("woundWashingDone") === "on",
             rig_given: fd.get("rigGiven") === "on",
@@ -519,6 +531,8 @@ export default function App() {
             schedule_d0: String(fd.get("scheduleD0") || "").trim() || null,
             schedule_d3: String(fd.get("scheduleD3") || "").trim() || null,
             schedule_d7: String(fd.get("scheduleD7") || "").trim() || null,
+            schedule_d14: String(fd.get("scheduleD14") || "").trim() || null,
+            schedule_d21: String(fd.get("scheduleD21") || "").trim() || null,
             schedule_d28: String(fd.get("scheduleD28") || "").trim() || null,
             is_minor_patient: isMinor,
             guardian_name: isMinor ? guardianName : null,
@@ -526,12 +540,27 @@ export default function App() {
             guardian_contact_number: isMinor ? guardianPhone : null,
             consent_given: isMinor ? guardianConsent : adultConsent,
             consent_given_by: isMinor ? "guardian" : "patient",
-            consent_statement: isMinor
-              ? "I am the parent/guardian and I consent to the patient receiving treatment."
-              : "I consent to receiving treatment."
+            consent_statement: isMinor ? GUARDIAN_CONSENT_STATEMENT : ADULT_CONSENT_STATEMENT
           }
         );
       } else if (logType === 'epi') {
+        const age = getAgeFromDateOfBirth(patientForm.date_of_birth);
+        const isMinor = age !== null && age < 18;
+        const guardianName = String(fd.get("guardianName") || "").trim();
+        const guardianEmail = String(fd.get("guardianEmail") || "").trim();
+        const guardianPhone = String(fd.get("guardianPhone") || "").trim();
+        const guardianConsent = fd.get("guardianConsent") === "on";
+        const adultConsent = fd.get("adultConsent") === "on";
+
+        if (isMinor) {
+          if (!guardianName) throw new Error("Guardian name is required for minors.");
+          if (!guardianEmail) throw new Error("Guardian email is required for minors.");
+          if (!guardianPhone) throw new Error("Guardian phone number is required for minors.");
+          if (!guardianConsent) throw new Error("Guardian consent is required for minors.");
+        } else if (!adultConsent) {
+          throw new Error("Patient consent is required for adults.");
+        }
+
         const epiKey = getEpiVaccineKey({ vaccine_name: epiForm.vaccine_name });
         const maxDoses = EPI_MAX_DOSES_BY_VACCINE_KEY[epiKey] || 1;
         const existingSeriesCount = immunizations.filter(
@@ -547,6 +576,13 @@ export default function App() {
           dose_number: Number(epiForm.dose_number || 1),
           scheduled_date: epiForm.scheduled_date,
           status: 'pending',
+          is_minor_patient: isMinor,
+          guardian_name: isMinor ? guardianName : null,
+          guardian_email: isMinor ? guardianEmail : null,
+          guardian_contact_number: isMinor ? guardianPhone : null,
+          consent_given: isMinor ? guardianConsent : adultConsent,
+          consent_given_by: isMinor ? "guardian" : "patient",
+          consent_statement: isMinor ? GUARDIAN_CONSENT_STATEMENT : ADULT_CONSENT_STATEMENT,
           notes: routeNote
         });
       }
@@ -1673,8 +1709,8 @@ export default function App() {
                     </div>
                   </div>
                   <div className="input-group">
-                    <label>Remarks</label>
-                    <input name="remarks" />
+                    <label>Site of Exposure</label>
+                    <input name="siteOfExposure" placeholder="e.g., left foot, right hand" />
                   </div>
                   <div className="input-group">
                     <label>Post-Exposure Prophylaxis</label>
@@ -1687,7 +1723,11 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Vaccine Generic Name</label>
-                      <input name="vaccineGenericName" defaultValue="PVRV" />
+                      <select name="vaccineGenericName" defaultValue="Purified Rabies Vaccine (Vero Cell)">
+                        {RABIES_VACCINE_GENERIC_NAMES.map(name => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="input-group">
                       <label>Brand Name</label>
@@ -1702,12 +1742,12 @@ export default function App() {
                     </select>
                   </div>
                   <div className="input-row">
-                    <div className="input-group"><label>D0</label><input type="date" name="scheduleD0" value={biteSchedulePreview.d0} readOnly /></div>
-                    <div className="input-group"><label>D3</label><input type="date" name="scheduleD3" value={biteSchedulePreview.d3} readOnly /></div>
-                  </div>
-                  <div className="input-row">
-                    <div className="input-group"><label>D7</label><input type="date" name="scheduleD7" value={biteSchedulePreview.d7} readOnly /></div>
-                    <div className="input-group"><label>D28</label><input type="date" name="scheduleD28" value={biteSchedulePreview.d28} readOnly /></div>
+                    {(BITE_PROTOCOLS[biteProtocol] || []).map((day) => (
+                      <div className="input-group" key={`schedule-${day}`}>
+                        <label>{`D${day}`}</label>
+                        <input type="date" name={`scheduleD${day}`} value={biteSchedulePreview[`d${day}`] || ""} readOnly />
+                      </div>
+                    ))}
                   </div>
                   <div className="input-group consent-section">
                     <label>Consent for Treatment</label>
@@ -1731,13 +1771,13 @@ export default function App() {
                         </div>
                         <label className="radio-label">
                           <input type="checkbox" name="guardianConsent" required={isMinorPatient} />
-                          I am the parent/guardian and I allow this patient to receive treatment.
+                          {GUARDIAN_CONSENT_STATEMENT}
                         </label>
                       </>
                     ) : (
                       <label className="radio-label">
                         <input type="checkbox" name="adultConsent" />
-                        I allow and consent to receive treatment.
+                        {ADULT_CONSENT_STATEMENT}
                       </label>
                     )}
                     <div className="consent-hint">
@@ -1896,6 +1936,43 @@ export default function App() {
                       {`Dose guide: ${epiDoseGuide}. Max doses: ${epiMaxDoses}.`}
                     </div>
                   )}
+                  <div className="input-group consent-section">
+                    <label>Consent for Treatment</label>
+                    {isMinorPatient ? (
+                      <>
+                        <div className="input-row">
+                          <div className="input-group">
+                            <label>Parent/Guardian Name</label>
+                            <input name="guardianName" required={isMinorPatient} />
+                          </div>
+                          <div className="input-group">
+                            <label>Parent/Guardian Email</label>
+                            <input type="email" name="guardianEmail" required={isMinorPatient} />
+                          </div>
+                        </div>
+                        <div className="input-row">
+                          <div className="input-group">
+                            <label>Parent/Guardian Phone Number (for reminders)</label>
+                            <input name="guardianPhone" placeholder="e.g., 09xxxxxxxxx" inputMode="tel" required={isMinorPatient} />
+                          </div>
+                        </div>
+                        <label className="radio-label">
+                          <input type="checkbox" name="guardianConsent" required={isMinorPatient} />
+                          {GUARDIAN_CONSENT_STATEMENT}
+                        </label>
+                      </>
+                    ) : (
+                      <label className="radio-label">
+                        <input type="checkbox" name="adultConsent" />
+                        {ADULT_CONSENT_STATEMENT}
+                      </label>
+                    )}
+                    <div className="consent-hint">
+                      {patientAge === null
+                        ? "Set DOB to auto-detect if guardian consent is required."
+                        : `Patient age detected: ${patientAge} (${isMinorPatient ? "Minor" : "Adult"})`}
+                    </div>
+                  </div>
                 </div>
               )}
 

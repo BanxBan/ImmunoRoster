@@ -24,11 +24,6 @@ export default async function handler(req, res) {
       if (patient_id) query = query.eq("patient_id", patient_id);
       if (status) query = query.eq("status", status);
 
-      // Filter by nurse if not admin
-      if (req.admin.role === 'nurse') {
-        query = query.eq("created_by", req.admin.sub);
-      }
-
       const { data, error } = await query;
       if (error) throw error;
       return res.status(200).json(data);
@@ -40,7 +35,7 @@ export default async function handler(req, res) {
 
       const { data, error } = await supabaseAdmin
         .from("immunizations")
-        .insert({ ...validated.body, created_by: req.admin.sub })
+        .insert(validated.body)
         .select("*")
         .single();
 
