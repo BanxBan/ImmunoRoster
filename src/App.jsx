@@ -142,6 +142,19 @@ function getEpiVaccineKey(immunization = {}) {
   return null;
 }
 
+function normalizePhContactNumber(rawValue) {
+  const digits = String(rawValue || "").replace(/\D/g, "");
+  if (!digits) return { local: "", e164: "" };
+
+  // Accept 09XXXXXXXXX, 9XXXXXXXXX, 63XXXXXXXXXX, +63XXXXXXXXXX; store as +63 + 10 digits
+  let local = digits;
+  if (local.startsWith("63")) local = local.slice(2);
+  if (local.startsWith("0")) local = local.slice(1);
+  local = local.slice(0, 10);
+
+  return { local, e164: local ? `+63${local}` : "" };
+}
+
 const BITE_PROTOCOLS = {
   "Standard IM (0, 3, 7, 14, 28)": [0, 3, 7, 14, 28],
   "Thai Red Cross ID/2-site regimen (0, 3, 7, 28)": [0, 3, 7, 28],
@@ -149,11 +162,22 @@ const BITE_PROTOCOLS = {
   "Booster (0, 3)": [0, 3]
 };
 const EXPOSURE_CATEGORIES = ["1", "2", "3"];
+const DEFAULT_BITE_VACCINE_GENERIC_NAME = "Purified Rabies Vaccine (Vero Cell)";
 const RABIES_VACCINE_GENERIC_NAMES = [
-  "PVRV",
   "Purified Rabies Vaccine (Vero Cell)",
-  "Rabies Vaccine (inactivated)"
+  "Rabies Vaccine (Inactivated)"
 ];
+const RABIES_VACCINE_BRAND_NAMES = ["SPEEDA", "VERORAB"];
+const RABIES_VACCINE_BRAND_BY_GENERIC_NAME = {
+  "Purified Rabies Vaccine (Vero Cell)": "SPEEDA",
+  "Rabies Vaccine (Inactivated)": "VERORAB",
+  // Backward-compat / casing variants
+  "Rabies Vaccine (inactivated)": "VERORAB"
+};
+const RABIES_VACCINE_GENERIC_BY_BRAND_NAME = {
+  SPEEDA: "Purified Rabies Vaccine (Vero Cell)",
+  VERORAB: "Rabies Vaccine (Inactivated)"
+};
 const ADULT_CONSENT_STATEMENT =
   "I voluntarily consent to medical treatment for EPI or Animal Bite management and authorize the electronic logging of my health data in the immunization Registry for community surveillance and continuity of care. By checking this box, I confirm that I am providing this authorization freely, officially notifying the attending nurse of my informed consent to proceed with both clinical treatment and digital documentaion.";
 const GUARDIAN_CONSENT_STATEMENT =
@@ -297,7 +321,17 @@ export default function App() {
   const [biteDateOfExposure, setBiteDateOfExposure] = useState(new Date().toISOString().split('T')[0]);
   const [biteProtocol, setBiteProtocol] = useState(Object.keys(BITE_PROTOCOLS)[0]);
   const [biteSchedulePreview, setBiteSchedulePreview] = useState({ d0: "", d3: "", d7: "", d14: "", d21: "", d28: "" });
+  const [biteVaccineGenericName, setBiteVaccineGenericName] = useState(DEFAULT_BITE_VACCINE_GENERIC_NAME);
+  const [biteVaccineBrandName, setBiteVaccineBrandName] = useState(
+    RABIES_VACCINE_BRAND_BY_GENERIC_NAME[DEFAULT_BITE_VACCINE_GENERIC_NAME] || ""
+  );
+  const [patientPhoneLocal, setPatientPhoneLocal] = useState(() => normalizePhContactNumber(initialPatientForm.contact_number).local);
+  const [guardianPhoneLocal, setGuardianPhoneLocal] = useState("");
   const formRef = useRef(null);
+
+  useEffect(() => {
+    setPatientPhoneLocal(normalizePhContactNumber(patientForm.contact_number).local);
+  }, [patientForm.contact_number]);
 
   useEffect(() => {
     if (editingId && formRef.current) {
@@ -489,7 +523,7 @@ export default function App() {
         const isMinor = age !== null && age < 18;
         const guardianName = String(fd.get("guardianName") || "").trim();
         const guardianEmail = String(fd.get("guardianEmail") || "").trim();
-        const guardianPhone = String(fd.get("guardianPhone") || "").trim();
+        const guardianPhone = normalizePhContactNumber(fd.get("guardianPhone")).e164;
         const guardianConsent = fd.get("guardianConsent") === "on";
         const adultConsent = fd.get("adultConsent") === "on";
 
@@ -543,12 +577,16 @@ export default function App() {
             consent_statement: isMinor ? GUARDIAN_CONSENT_STATEMENT : ADULT_CONSENT_STATEMENT
           }
         );
+        setToast({
+          type: "success",
+          message: "Animal Bite Log saved successfully."
+        });
       } else if (logType === 'epi') {
         const age = getAgeFromDateOfBirth(patientForm.date_of_birth);
         const isMinor = age !== null && age < 18;
         const guardianName = String(fd.get("guardianName") || "").trim();
         const guardianEmail = String(fd.get("guardianEmail") || "").trim();
-        const guardianPhone = String(fd.get("guardianPhone") || "").trim();
+        const guardianPhone = normalizePhContactNumber(fd.get("guardianPhone")).e164;
         const guardianConsent = fd.get("guardianConsent") === "on";
         const adultConsent = fd.get("adultConsent") === "on";
 
@@ -585,12 +623,20 @@ export default function App() {
           consent_statement: isMinor ? GUARDIAN_CONSENT_STATEMENT : ADULT_CONSENT_STATEMENT,
           notes: routeNote
         });
+        setToast({
+          type: "success",
+          message: "EPI record saved successfully."
+        });
       }
 
       setPatientForm(initialPatientForm);
       setEditingId(null);
       setLogType('none');
       setBiteAnimalType('Dog');
+      setBiteVaccineGenericName(DEFAULT_BITE_VACCINE_GENERIC_NAME);
+      setBiteVaccineBrandName(RABIES_VACCINE_BRAND_BY_GENERIC_NAME[DEFAULT_BITE_VACCINE_GENERIC_NAME] || "");
+      setPatientPhoneLocal("");
+      setGuardianPhoneLocal("");
       setEpiForm({
         vaccine_name: "",
         route: "",
@@ -1142,48 +1188,50 @@ export default function App() {
             color: toast.type === "success" ? "#166534" : toast.type === "info" ? "#1e40af" : undefined
           }}
         >
-          {toast.message}
+{toast.message}
         </div>
       )}
 
       {activeTab === 'census' && (
         <section className="census-modern">
-          <div className="census-intro">
-            This section presents the barangay trends and cumulative reported cases of selected vaccine-preventable diseases (VPDs) and animal bite incidents in {censusBarangayScope} up to the year {new Date().getFullYear()}.
-          </div>
-
-          <div className="active-alert">
-            <button
-              type="button"
-              className="active-alert-trigger"
-              onClick={() => setShowActiveBiteAlert(!showActiveBiteAlert)}
-            >
-              <div className="active-alert-main">
-                <span className="active-alert-icon">AB</span>
-                <div>
-                  <strong>Active Bite Cases</strong>
-                  <span>{stats.filterLabel} • {stats.activeBiteCases} pending treatment{stats.activeBiteCases === 1 ? "" : "s"}</span>
+          <div className="census-header-grid">
+            <div className="active-alert">
+              <button
+                type="button"
+                className="active-alert-trigger"
+                onClick={() => setShowActiveBiteAlert(!showActiveBiteAlert)}
+              >
+                <div className="active-alert-main">
+                  <span className="active-alert-icon">AB</span>
+                  <div>
+                    <strong>Active Bite Cases</strong>
+                    <span>{stats.filterLabel} • {stats.activeBiteCases} pending treatment{stats.activeBiteCases === 1 ? "" : "s"}</span>
+                  </div>
                 </div>
-              </div>
-              <span className="active-alert-count">{stats.activeBiteCaseRate}%</span>
-            </button>
+                <span className="active-alert-count">{stats.activeBiteCaseRate}%</span>
+              </button>
 
-            {showActiveBiteAlert && (
-              <ul className="active-alert-list">
-                {activeBiteAlerts.map(bite => (
-                  <li key={bite.id} className="active-alert-item">
-                    <div className="data-main">
-                      <span className="data-title">{patientById[bite.patient_id]?.full_name || 'Loading...'}</span>
-                      <span className="data-sub">{bite.animal_type} bite • Status: {bite.treatment_status}</span>
-                    </div>
-                    <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
-                  </li>
-                ))}
-                {activeBiteAlerts.length === 0 && (
-                  <li className="active-alert-empty">No active bite cases for this filter.</li>
-                )}
-              </ul>
-            )}
+              {showActiveBiteAlert && (
+                <ul className="active-alert-list">
+                  {activeBiteAlerts.map(bite => (
+                    <li key={bite.id} className="active-alert-item">
+                      <div className="data-main">
+                        <span className="data-title">{patientById[bite.patient_id]?.full_name || 'Loading...'}</span>
+                        <span className="data-sub">{bite.animal_type} bite • Status: {bite.treatment_status}</span>
+                      </div>
+                      <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
+                    </li>
+                  ))}
+                  {activeBiteAlerts.length === 0 && (
+                    <li className="active-alert-empty">No active bite cases for this filter.</li>
+                  )}
+                </ul>
+              )}
+            </div>
+
+            <div className="census-intro">
+              This section presents the barangay trends and cumulative reported cases of selected vaccine-preventable diseases (VPDs) and animal bite incidents in {censusBarangayScope} up to the year {new Date().getFullYear()}.
+            </div>
           </div>
 
           <div className="barangay-filter-bar">
@@ -1599,12 +1647,21 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Phone Number (for reminders)</label>
-                      <input
-                        value={patientForm.contact_number || ""}
-                        onChange={e => setPatientForm({ ...patientForm, contact_number: e.target.value })}
-                        placeholder="e.g., 09xxxxxxxxx"
-                        inputMode="tel"
-                      />
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <span style={{ padding: "0.55rem 0.75rem", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--panel)" }}>+63</span>
+                        <input
+                          value={patientPhoneLocal}
+                          onChange={(e) => {
+                            const local = String(e.target.value || "").replace(/\D/g, "").slice(0, 10);
+                            setPatientPhoneLocal(local);
+                            setPatientForm({ ...patientForm, contact_number: local ? `+63${local}` : "" });
+                          }}
+                          placeholder="9XXXXXXXXX"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={10}
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="input-row">
@@ -1723,7 +1780,15 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group">
                       <label>Vaccine Generic Name</label>
-                      <select name="vaccineGenericName" defaultValue="Purified Rabies Vaccine (Vero Cell)">
+                      <select
+                        name="vaccineGenericName"
+                        value={biteVaccineGenericName}
+                        onChange={(e) => {
+                          const nextGeneric = e.target.value;
+                          setBiteVaccineGenericName(nextGeneric);
+                          setBiteVaccineBrandName(RABIES_VACCINE_BRAND_BY_GENERIC_NAME[nextGeneric] || "");
+                        }}
+                      >
                         {RABIES_VACCINE_GENERIC_NAMES.map(name => (
                           <option key={name} value={name}>{name}</option>
                         ))}
@@ -1731,7 +1796,19 @@ export default function App() {
                     </div>
                     <div className="input-group">
                       <label>Brand Name</label>
-                      <input name="vaccineBrandName" defaultValue="SPEEDA" />
+                      <select
+                        name="vaccineBrandName"
+                        value={biteVaccineBrandName}
+                        onChange={(e) => {
+                          const nextBrand = e.target.value;
+                          setBiteVaccineBrandName(nextBrand);
+                          setBiteVaccineGenericName(RABIES_VACCINE_GENERIC_BY_BRAND_NAME[nextBrand] || DEFAULT_BITE_VACCINE_GENERIC_NAME);
+                        }}
+                      >
+                        {RABIES_VACCINE_BRAND_NAMES.map((name) => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="input-group">
@@ -1766,7 +1843,19 @@ export default function App() {
                         <div className="input-row">
                           <div className="input-group">
                             <label>Parent/Guardian Phone Number (for reminders)</label>
-                            <input name="guardianPhone" placeholder="e.g., 09xxxxxxxxx" inputMode="tel" required={isMinorPatient} />
+                            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                              <span style={{ padding: "0.55rem 0.75rem", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--panel)" }}>+63</span>
+                              <input
+                                name="guardianPhone"
+                                value={guardianPhoneLocal}
+                                onChange={(e) => setGuardianPhoneLocal(String(e.target.value || "").replace(/\D/g, "").slice(0, 10))}
+                                placeholder="9XXXXXXXXX"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                maxLength={10}
+                                required={isMinorPatient}
+                              />
+                            </div>
                           </div>
                         </div>
                         <label className="radio-label">
@@ -1791,6 +1880,7 @@ export default function App() {
 
               {logType === 'epi' && (
                 <div className="clinical-panel clinical-panel-epi">
+                  <h3 style={{ marginBottom: "0.75rem" }}>EPI Immunization Intake Form</h3>
                   <div className="input-row">
                     <div className="input-group">
                       <label>Full Name</label>
