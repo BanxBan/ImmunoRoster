@@ -1470,7 +1470,7 @@ export default function App() {
               </div>
 
               <div className="bite-module-section">
-                <div className="active-bite-summary">
+                <div className="active-bite-summary active-case-summary">
                   <div>
                     <span className="stat-value">{stats.activeBiteCases}</span>
                     <span className="stat-label">Active Bite Cases</span>
@@ -2285,25 +2285,10 @@ export default function App() {
                         <h3>History: {selectedHistoryPatient.full_name}</h3>
                         <span className="data-sub">Clinical Record & Immunization History</span>
                       </div>
-                      <div className="modal-tabs">
-                        <button 
-                          className={`modal-tab ${historyTab === 'treatment' ? 'active' : ''}`}
-                          onClick={() => setHistoryTab('treatment')}
-                        >
-                          Treatment History
-                        </button>
-                        <button 
-                          className={`modal-tab ${historyTab === 'profile' ? 'active' : ''}`}
-                          onClick={() => setHistoryTab('profile')}
-                        >
-                          Patient Profile
-                        </button>
-                      </div>
                     </div>
                   </div>
                   <div className="registry-modal-body">
-                    {historyTab === 'treatment' ? (
-                      <div className="patient-history-grid">
+                    <div className="patient-history-grid">
                         <div>
                           <h4 className="patient-history-title">EPI Vaccine History</h4>
                           <div className="data-list">
@@ -2336,10 +2321,7 @@ export default function App() {
                             {selectedPatientBiteHistory.length === 0 && <p className="registry-empty">No animal bite treatment records.</p>}
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      <PatientProfileSummary patient={selectedHistoryPatient} />
-                    )}
+                    </div>
                   </div>
                   <div className="registry-modal-actions">
                     <button className="primary" onClick={() => setSelectedHistoryPatientId(null)}>Close</button>

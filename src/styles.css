@@ -651,12 +651,36 @@ header h1 {
 }
 
 .active-bite-summary strong {
-  color: #dc2626;
+  color: #ea580c;
   font-size: 1.5rem;
 }
 
+.treatment-summary {
+  background: linear-gradient(145deg, #f0fdf4, #ffffff);
+  border-color: #bbf7d0;
+}
+
+.treatment-summary .stat-value,
 .treatment-summary strong {
   color: #166534;
+}
+
+.treatment-summary .stat-label {
+  color: #15803d;
+}
+
+.active-case-summary {
+  background: linear-gradient(145deg, #fff7ed, #ffffff);
+  border-color: #fed7aa;
+}
+
+.active-case-summary .stat-value,
+.active-case-summary strong {
+  color: #ea580c;
+}
+
+.active-case-summary .stat-label {
+  color: #c2410c;
 }
 
 .bite-breakdown {
