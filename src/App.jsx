@@ -605,7 +605,7 @@ export default function App() {
             vaccine_brand_name: String(fd.get("vaccineBrandName") || "").trim() || null,
             vaccine_route: String(fd.get("vaccineRoute") || "").trim() || null,
             post_exposure_schedule: protocolNameToLabel(fd.get("protocol")),
-            remarks: rigRemarks || String(fd.get("remarks") || "").trim() || null,
+            notes: rigRemarks || String(fd.get("remarks") || "").trim() || null,
             schedule_d0: String(fd.get("scheduleD0") || "").trim() || null,
             schedule_d3: String(fd.get("scheduleD3") || "").trim() || null,
             schedule_d7: String(fd.get("scheduleD7") || "").trim() || null,
@@ -716,7 +716,7 @@ export default function App() {
 
     // If RIG was given, create a separate immunization record for it
     if (intake.rig_given) {
-      const rigDetails = intake.remarks ? ` [${intake.remarks}]` : "";
+      const rigDetails = intake.notes ? ` [${intake.notes}]` : "";
       await createImmunization({
         patient_id: patientId,
         vaccine_name: "Rabies Immunoglobulin (RIG)",
@@ -2692,9 +2692,9 @@ export default function App() {
                                   <span className="data-sub" style={{ fontSize: "0.75rem" }}>
                                     Protocol: {bite.treatment_protocol || "N/A"} • Doses: {bite.doses_administered ?? 0}/{bite.total_required_doses ?? "N/A"} • Status: {bite.treatment_status || "N/A"}
                                   </span>
-                                  {bite.remarks && (
+                                  {bite.notes && (
                                     <span className="data-sub" style={{ fontSize: "0.75rem", color: '#2563eb', fontWeight: 600, marginTop: '0.2rem' }}>
-                                      {bite.remarks}
+                                      {bite.notes}
                                     </span>
                                   )}
 

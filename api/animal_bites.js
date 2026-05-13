@@ -4,6 +4,16 @@ import { supabaseAdmin } from "./_lib/supabase.js";
 import { validateRequest } from "./_lib/validation.js";
 import { animalBiteSchema, animalBiteUpdateSchema, patientIdQuerySchema } from "./_lib/schemas.js";
 
+function normalizeAnimalBitePayload(body) {
+  if (!body || typeof body !== "object" || !("remarks" in body)) return body;
+
+  const { remarks, ...rest } = body;
+  return {
+    ...rest,
+    notes: rest.notes ?? remarks
+  };
+}
+
 export default async function handler(req, res) {
   if (withCors(req, res)) return;
   if (!requireAdminAuth(req, res)) return;
@@ -35,6 +45,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
+      req.body = normalizeAnimalBitePayload(req.body);
       const validated = validateRequest(req, res, { body: animalBiteSchema });
       if (!validated) return;
 
@@ -49,6 +60,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "PATCH") {
+      req.body = normalizeAnimalBitePayload(req.body);
       const validated = validateRequest(req, res, {
         query: patientIdQuerySchema.pick({ id: true }),
         body: animalBiteUpdateSchema

@@ -147,7 +147,6 @@ create table if not exists public.animal_bites (
   source_other_details text,
   source_vaccination_status text,
   status_of_animal_after_14_days text,
-  remarks text,
   severity_category text,
   wound_washing_done boolean,
   rig_given boolean,
@@ -192,7 +191,6 @@ alter table public.animal_bites add column if not exists source_of_exposure text
 alter table public.animal_bites add column if not exists source_other_details text;
 alter table public.animal_bites add column if not exists source_vaccination_status text;
 alter table public.animal_bites add column if not exists status_of_animal_after_14_days text;
-alter table public.animal_bites add column if not exists remarks text;
 alter table public.animal_bites add column if not exists wound_washing_done boolean;
 alter table public.animal_bites add column if not exists rig_given boolean;
 alter table public.animal_bites add column if not exists anti_rabies_vaccine_given boolean;

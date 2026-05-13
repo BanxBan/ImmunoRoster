@@ -73,7 +73,6 @@ export const animalBiteSchema = z.object({
   source_other_details: optionalSanitizedString,
   source_vaccination_status: optionalSanitizedString,
   status_of_animal_after_14_days: optionalSanitizedString,
-  remarks: optionalSanitizedString,
   severity_category: optionalSanitizedString,
   wound_washing_done: z.boolean().optional().nullable(),
   rig_given: z.boolean().optional().nullable(),
