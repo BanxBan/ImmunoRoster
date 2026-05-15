@@ -269,7 +269,7 @@ function getAgeFromDateOfBirth(dateOfBirth) {
   return age;
 }
 
-const PatientProfileSummary = ({ patient }) => {
+const PatientProfileSummary = ({ patient, biteRecords = [] }) => {
   if (!patient) return null;
   const profileItems = [
     { label: "Full Name", value: patient.full_name },
@@ -296,9 +296,79 @@ const PatientProfileSummary = ({ patient }) => {
           </div>
         ))}
       </div>
+
+      {biteRecords.length > 0 && (
+        <div style={{ marginTop: "2rem" }}>
+          <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px dashed var(--border)" }} />
+          <h4 style={{ marginBottom: "1.2rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span>🐕</span> Animal Bite Case Details
+          </h4>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            {biteRecords.map((bite, bidx) => (
+              <div key={bidx} className="bite-case-summary" style={{ background: "#f8fafc", padding: "1rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem" }}>
+                   <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1e293b" }}>
+                     {bite.animal_type} Case {bite.registration_no ? `(#${bite.registration_no})` : ""} • Incident: {bite.incident_date}
+                   </span>
+                   <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
+                </div>
+                <div className="profile-grid">
+                  <div className="profile-item">
+                    <span className="profile-item-label">Category of Exposure</span>
+                    <span className="profile-item-value">Category {bite.severity_category || "—"}</span>
+                  </div>
+                  <div className="profile-item">
+                    <span className="profile-item-label">Site of Exposure</span>
+                    <span className="profile-item-value">{bite.site_of_exposure || "—"}</span>
+                  </div>
+                  <div className="profile-item">
+                     <span className="profile-item-label">Exposure Type</span>
+                     <span className="profile-item-value" style={{ textTransform: "capitalize" }}>{getExposureType(bite)}</span>
+                  </div>
+                  <div className="profile-item">
+                     <span className="profile-item-label">Source of Exposure</span>
+                     <span className="profile-item-value">{bite.source_of_exposure || "—"}</span>
+                  </div>
+                  <div className="profile-item">
+                     <span className="profile-item-label">Place of Exposure</span>
+                     <span className="profile-item-value">{bite.place_of_exposure || "—"}</span>
+                  </div>
+                  <div className="profile-item">
+                     <span className="profile-item-label">Wound Washing</span>
+                     <span className="profile-item-value">{bite.wound_washing_done ? "✅ Done" : "❌ Not Done"}</span>
+                  </div>
+                  <div className="profile-item">
+                     <span className="profile-item-label">RIG Given</span>
+                     <span className="profile-item-value">{bite.rig_given ? "✅ Yes" : "❌ No"}</span>
+                  </div>
+                  <div className="profile-item">
+                     <span className="profile-item-label">Vaccine Route</span>
+                     <span className="profile-item-value">{bite.vaccine_route || "—"}</span>
+                  </div>
+                  <div className="profile-item">
+                     <span className="profile-item-label">Treatment Protocol</span>
+                     <span className="profile-item-value" style={{ fontSize: "0.8rem" }}>{bite.treatment_protocol || "—"}</span>
+                  </div>
+                  <div className="profile-item">
+                     <span className="profile-item-label">Vaccine Brand</span>
+                     <span className="profile-item-value">{bite.vaccine_brand_name || "—"}</span>
+                  </div>
+                </div>
+                {bite.notes && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.6rem", background: "#eff6ff", borderRadius: "8px", fontSize: "0.8rem" }}>
+                    <strong style={{ color: "#1e40af" }}>Notes:</strong> {bite.notes}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+
 
 const initialPatientForm = {
   full_name: "",
@@ -1038,11 +1108,18 @@ export default function App() {
 
   const selectedRegistryBiteRecords = useMemo(() => {
     if (!selectedRegistryBiteHistoryPatientId) return [];
-    return [...animalBites]
-      .filter((b) => b.patient_id === selectedRegistryBiteHistoryPatientId)
-      .sort((a, b) => new Date(b.incident_date || "1900-01-01") - new Date(a.incident_date || "1900-01-01"))
+    const patientBites = animalBites.filter((b) => b.patient_id === selectedRegistryBiteHistoryPatientId);
+    const patientImms = immunizations.filter((imm) => imm.patient_id === selectedRegistryBiteHistoryPatientId);
+
+    return patientBites.map(bite => {
+      // Link immunizations that were created for this bite case
+      const relatedImms = patientImms.filter(imm => 
+        imm.notes?.includes(`Bite Case #${bite.id.slice(0, 5)}`)
+      );
+      return { ...bite, relatedImms };
+    }).sort((a, b) => new Date(b.incident_date || "1900-01-01") - new Date(a.incident_date || "1900-01-01"))
       .slice(0, 12);
-  }, [animalBites, selectedRegistryBiteHistoryPatientId]);
+  }, [animalBites, immunizations, selectedRegistryBiteHistoryPatientId]);
   const todayISO = new Date().toLocaleDateString('en-CA');
   const reminderItems = useMemo(() => {
     const todayDate = new Date(todayISO);
@@ -1112,13 +1189,49 @@ export default function App() {
     }
   }
 
+  async function markImmunizationDone(id, currentNotes = "") {
+    try {
+      setLoading(true);
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+      
+      let newNotes = currentNotes || "";
+      if (!newNotes.includes("[Done at")) {
+        newNotes = newNotes ? `${newNotes} [Done at ${timeStr}]` : `[Done at ${timeStr}]`;
+      }
+
+      await updateImmunization(id, { 
+        status: 'completed', 
+        administered_date: now.toISOString().split('T')[0],
+        notes: newNotes
+      });
+      await loadAllData();
+      setToast({ type: 'success', message: 'Dose marked as accomplished.' });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function markBiteDoseDone(biteId, doseImmId) {
     try {
       setLoading(true);
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+      
+      const imm = immunizations.find(i => i.id === doseImmId);
+      const currentNotes = imm?.notes || "";
+      let newNotes = currentNotes;
+      if (!currentNotes.includes("[Done at")) {
+        newNotes = currentNotes ? `${currentNotes} [Done at ${timeStr}]` : `[Done at ${timeStr}]`;
+      }
+
       // 1. Mark immunization as completed
       await updateImmunization(doseImmId, { 
         status: 'completed', 
-        administered_date: new Date().toISOString().split('T')[0] 
+        administered_date: now.toISOString().split('T')[0],
+        notes: newNotes
       });
       
       // 2. Increment doses_administered in animal_bites
@@ -2297,7 +2410,7 @@ export default function App() {
                                 <div className="data-main">
                                   <span className="data-title">{imm.vaccine_name} (Dose {imm.dose_number})</span>
                                   <span className="data-sub">Scheduled: {imm.scheduled_date || "N/A"}</span>
-                                  <span className="data-sub">Given: {imm.administered_date || "Not yet"}</span>
+                                  <span className="data-sub">Given: {imm.administered_date || "Not yet"}{imm.status === "completed" && imm.notes?.includes("[Done at ") ? ` at ${imm.notes.match(/\[Done at (.*?)\]/)[1]}` : ""}</span>
                                 </div>
                                 <span className={`badge badge-${imm.status}`}>{imm.status === 'completed' ? 'accomplished' : imm.status}</span>
                               </div>
@@ -2469,10 +2582,7 @@ export default function App() {
                         </div>
                         <div className="registry-row-actions">
                           <span className={`badge badge-${imm.status}`}>pending</span>
-                          <button className="primary registry-action-btn" onClick={async () => {
-                            await updateImmunization(imm.id, { status: 'completed', administered_date: new Date().toISOString().split('T')[0] });
-                            loadAllData();
-                          }}>Mark Done</button>
+                          <button className="primary registry-action-btn" onClick={() => markImmunizationDone(imm.id, imm.notes)}>Mark Done</button>
                           {/* <button
                           className="secondary registry-action-btn"
                           onClick={() => {
@@ -2520,7 +2630,7 @@ export default function App() {
                           {imm.patients?.full_name || "Unknown Patient"}
                         </button>
                         <span className="data-sub">
-                          {imm.vaccine_name} (# {imm.dose_number}) • Accomplished: {imm.administered_date || imm.scheduled_date}
+                          {imm.vaccine_name} (# {imm.dose_number}) • Accomplished: {imm.administered_date || imm.scheduled_date}{imm.notes?.includes("[Done at ") ? ` at ${imm.notes.match(/\[Done at (.*?)\]/)[1]}` : ""}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -2605,7 +2715,16 @@ export default function App() {
                                     const isNA = doseNum > vaccine.requiredDoses;
                                     return (
                                       <td key={doseNum} className={`vc-date-cell ${isNA ? 'vc-date-na' : ''} ${dose?.status === 'completed' ? 'vc-date-done' : dose?.status ? 'vc-date-pending' : ''}`}>
-                                        {isNA ? '' : (dose?.date || '—')}
+                                        {isNA ? '' : (
+                                          <>
+                                            <div>{dose?.date || '—'}</div>
+                                            {dose?.status === 'completed' && (
+                                              <div style={{ fontSize: '0.65rem', fontWeight: 700, marginTop: '2px', color: '#059669' }}>
+                                                ✅ Done {dose?.record?.notes?.match(/\[Done at (.*?)\]/)?.[1] ? `at ${dose.record.notes.match(/\[Done at (.*?)\]/)[1]}` : ''}
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
                                       </td>
                                     );
                                   })}
@@ -2625,7 +2744,7 @@ export default function App() {
                         </div>
                       </>
                     ) : (
-                      <PatientProfileSummary patient={selectedRegistryEpiHistoryPatient} />
+                      <PatientProfileSummary patient={selectedRegistryEpiHistoryPatient} biteRecords={animalBites.filter(b => b.patient_id === selectedRegistryEpiHistoryPatientId)} />
                     )}
                   </div>
                   <div className="registry-modal-actions">
@@ -2711,11 +2830,21 @@ export default function App() {
                                           </thead>
                                           <tbody>
                                             <tr>
-                                              {schedule.map(([label, dt]) => (
-                                                <td key={`sch-${bite.id}-${label}`} className="vc-date-cell">
-                                                  {dt || "—"}
-                                                </td>
-                                              ))}
+                                              {schedule.map(([label, dt]) => {
+                                                const imm = bite.relatedImms?.find(i => i.scheduled_date === dt);
+                                                const isDone = imm?.status === 'completed';
+                                                const doneTime = imm?.notes?.match(/\[Done at (.*?)\]/)?.[1];
+                                                return (
+                                                  <td key={`sch-${bite.id}-${label}`} className={`vc-date-cell ${isDone ? 'vc-date-done' : ''}`}>
+                                                    <div>{dt || "—"}</div>
+                                                    {isDone && (
+                                                      <div style={{ fontSize: '0.65rem', fontWeight: 700, marginTop: '2px', color: '#059669' }}>
+                                                        ✅ Done {doneTime ? `at ${doneTime}` : ''}
+                                                      </div>
+                                                    )}
+                                                  </td>
+                                                );
+                                              })}
                                             </tr>
                                           </tbody>
                                         </table>
@@ -2736,7 +2865,7 @@ export default function App() {
                         </div>
                       </>
                     ) : (
-                      <PatientProfileSummary patient={selectedRegistryBiteHistoryPatient} />
+                      <PatientProfileSummary patient={selectedRegistryBiteHistoryPatient} biteRecords={selectedRegistryBiteRecords} />
                     )}
                   </div>
                   <div className="registry-modal-actions">
