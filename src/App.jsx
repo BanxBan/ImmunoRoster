@@ -389,7 +389,7 @@ const PatientProfileSummary = ({ patient, biteRecords = [], epiRecords = [] }) =
                   </div>
                   <div className="profile-item">
                     <span className="profile-item-label">Route</span>
-                    <span className="profile-item-value">{imm.route || "—"}</span>
+                    <span className="profile-item-value">{imm.route || (imm.notes?.includes("Route: ") ? imm.notes.match(/Route: (.*?)(?:\s|\[|$)/)?.[1] : "—")}</span>
                   </div>
                 </div>
               </div>
