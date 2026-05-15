@@ -269,7 +269,7 @@ function getAgeFromDateOfBirth(dateOfBirth) {
   return age;
 }
 
-const PatientProfileSummary = ({ patient, biteRecords = [] }) => {
+const PatientProfileSummary = ({ patient, biteRecords = [], epiRecords = [] }) => {
   if (!patient) return null;
   const profileItems = [
     { label: "Full Name", value: patient.full_name },
@@ -364,9 +364,43 @@ const PatientProfileSummary = ({ patient, biteRecords = [] }) => {
           </div>
         </div>
       )}
+
+      {epiRecords.length > 0 && (
+        <div style={{ marginTop: "2rem" }}>
+          <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px dashed var(--border)" }} />
+          <h4 style={{ marginBottom: "1.2rem", color: "var(--primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span>💉</span> EPI Immunization Details
+          </h4>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {epiRecords.map((imm, idx) => (
+              <div key={idx} style={{ background: "#f8fafc", padding: "1rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <div className="profile-grid">
+                  <div className="profile-item">
+                    <span className="profile-item-label">Vaccine</span>
+                    <span className="profile-item-value">{imm.vaccine_name}</span>
+                  </div>
+                  <div className="profile-item">
+                    <span className="profile-item-label">Sched</span>
+                    <span className="profile-item-value">{imm.administered_date || imm.scheduled_date}</span>
+                  </div>
+                  <div className="profile-item">
+                    <span className="profile-item-label">Dose Number</span>
+                    <span className="profile-item-value">{imm.dose_number}</span>
+                  </div>
+                  <div className="profile-item">
+                    <span className="profile-item-label">Route</span>
+                    <span className="profile-item-value">{imm.route || "—"}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 
 
 
@@ -389,6 +423,9 @@ const initialPatientForm = {
 
 export default function App() {
   const [adminUser, setAdminUser] = useState(() => getAdminSession());
+  const [registrySearch, setRegistrySearch] = useState("");
+  const [registryPage, setRegistryPage] = useState(1);
+  const registryItemsPerPage = 5;
   const [activeTab, setActiveTab] = useState("census");
   const [loginForm, setLoginForm] = useState({ identifier: "", password: "" });
   const [loggingIn, setLoggingIn] = useState(false);
@@ -1105,6 +1142,27 @@ export default function App() {
       return { ...vaccine, doses, remarks, allCompleted, hasAnyRecord };
     });
   }, [immunizations, selectedRegistryEpiHistoryPatientId]);
+
+  const filteredPatients = useMemo(() => {
+    if (!registrySearch) return patients;
+    const s = registrySearch.toLowerCase();
+    return patients.filter(p => 
+      p.full_name?.toLowerCase().includes(s) || 
+      p.barangay?.toLowerCase().includes(s) ||
+      p.contact_number?.includes(s)
+    );
+  }, [patients, registrySearch]);
+
+  const totalRegistryPages = Math.ceil(filteredPatients.length / registryItemsPerPage);
+  const paginatedPatients = useMemo(() => {
+    const start = (registryPage - 1) * registryItemsPerPage;
+    return filteredPatients.slice(start, start + registryItemsPerPage);
+  }, [filteredPatients, registryPage, registryItemsPerPage]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setRegistryPage(1);
+  }, [registrySearch]);
 
   const selectedRegistryBiteRecords = useMemo(() => {
     if (!selectedRegistryBiteHistoryPatientId) return [];
@@ -2331,9 +2389,27 @@ export default function App() {
           </section>
 
           <section className="card" style={{ margin: 0 }}>
-            <h2>General Patient Registry</h2>
+            <div className="registry-search-container">
+              <h2 style={{ margin: 0 }}>General Patient Registry</h2>
+              <div className="search-wrapper">
+                <span className="search-icon">🔍</span>
+                <input 
+                  type="text" 
+                  className="search-input"
+                  placeholder="Search by name, barangay, or contact..." 
+                  value={registrySearch}
+                  onChange={e => setRegistrySearch(e.target.value)}
+                />
+                {registrySearch && (
+                  <button 
+                    onClick={() => setRegistrySearch("")} 
+                    style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", border: "none", background: "none", cursor: "pointer", fontSize: "1.1rem", opacity: 0.4 }}
+                  >✕</button>
+                )}
+              </div>
+            </div>
             <div className="data-list">
-              {patients.map(p => (
+              {paginatedPatients.map(p => (
                 <div key={p.id} className="data-item">
                   <div className="data-main">
                     <span className="data-title">{p.full_name}</span>
@@ -2388,6 +2464,55 @@ export default function App() {
                   </div>
                 </div>
               ))}
+              {filteredPatients.length === 0 && (
+                <p className="registry-empty">No patients found.</p>
+              )}
+              {totalRegistryPages > 1 && (
+                <div className="pagination-container">
+                  <div className="pagination-stats">
+                    Showing <strong>{((registryPage - 1) * registryItemsPerPage) + 1}</strong> to <strong>{Math.min(registryPage * registryItemsPerPage, filteredPatients.length)}</strong> of <strong>{filteredPatients.length}</strong> patients
+                  </div>
+                  <div className="pagination-nav">
+                    <button 
+                      className="pg-btn" 
+                      disabled={registryPage === 1} 
+                      onClick={() => setRegistryPage(p => Math.max(1, p - 1))}
+                      title="Previous Page"
+                    >
+                      <span className="pg-arrow">‹</span>
+                    </button>
+                    
+                    <div style={{ display: "flex", gap: "0.4rem" }}>
+                      {Array.from({ length: totalRegistryPages }, (_, i) => i + 1).map(page => {
+                        if (totalRegistryPages > 7) {
+                          if (page !== 1 && page !== totalRegistryPages && (page < registryPage - 1 || page > registryPage + 1)) {
+                            if (page === registryPage - 2 || page === registryPage + 2) return <span key={page} style={{ padding: "0 0.5rem", opacity: 0.4 }}>...</span>;
+                            return null;
+                          }
+                        }
+                        return (
+                          <button 
+                            key={page} 
+                            className={`pg-btn ${registryPage === page ? "active" : ""}`} 
+                            onClick={() => setRegistryPage(page)}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button 
+                      className="pg-btn" 
+                      disabled={registryPage === totalRegistryPages} 
+                      onClick={() => setRegistryPage(p => Math.min(totalRegistryPages, p + 1))}
+                      title="Next Page"
+                    >
+                      <span className="pg-arrow">›</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             {selectedHistoryPatient && (
               <div className="registry-modal-backdrop" onClick={() => setSelectedHistoryPatientId(null)}>
@@ -2744,7 +2869,7 @@ export default function App() {
                         </div>
                       </>
                     ) : (
-                      <PatientProfileSummary patient={selectedRegistryEpiHistoryPatient} biteRecords={animalBites.filter(b => b.patient_id === selectedRegistryEpiHistoryPatientId)} />
+                      <PatientProfileSummary patient={selectedRegistryEpiHistoryPatient} biteRecords={animalBites.filter(b => b.patient_id === selectedRegistryEpiHistoryPatientId)} epiRecords={immunizations.filter(imm => imm.patient_id === selectedRegistryEpiHistoryPatientId && imm.vaccine_name !== "Anti-Rabies")} />
                     )}
                   </div>
                   <div className="registry-modal-actions">
@@ -2865,7 +2990,7 @@ export default function App() {
                         </div>
                       </>
                     ) : (
-                      <PatientProfileSummary patient={selectedRegistryBiteHistoryPatient} biteRecords={selectedRegistryBiteRecords} />
+                      <PatientProfileSummary patient={selectedRegistryBiteHistoryPatient} biteRecords={selectedRegistryBiteRecords} epiRecords={immunizations.filter(imm => imm.patient_id === selectedRegistryBiteHistoryPatientId && imm.vaccine_name !== "Anti-Rabies")} />
                     )}
                   </div>
                   <div className="registry-modal-actions">
