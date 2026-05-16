@@ -744,7 +744,6 @@ export default function App() {
             site_of_exposure: String(fd.get("siteOfExposure") || "").trim() || null,
             source_of_exposure: selectedAnimal,
             source_other_details: selectedAnimal === "Other" ? customAnimal : null,
-            source_vaccination_status: String(fd.get("sourceVaccinationStatus") || "").trim() || null,
             status_of_animal_after_14_days: String(fd.get("animalStatus14Days") || "").trim() || null,
             severity_category: String(fd.get("categoryOfExposure") || "").trim() || null,
             wound_washing_done: fd.get("woundWashingDone") === "on",
@@ -2161,13 +2160,6 @@ export default function App() {
                     </div>
                   )}
                   <div className="input-row">
-                    <div className="input-group">
-                      <label>Source Vaccination Status (N/S)</label>
-                      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginTop: "0.4rem" }}>
-                        <label className="radio-label"><input type="radio" name="sourceVaccinationStatus" value="N" /> N</label>
-                        <label className="radio-label"><input type="radio" name="sourceVaccinationStatus" value="S" /> S</label>
-                      </div>
-                    </div>
                     <div className="input-group">
                       <label>Animal Status after 14 Days</label>
                       <input name="animalStatus14Days" placeholder="Alive/Dead/Unknown" />
