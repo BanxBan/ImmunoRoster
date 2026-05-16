@@ -452,6 +452,8 @@ export default function App() {
   const [showActiveBiteAlert, setShowActiveBiteAlert] = useState(false);
   const [showHeaderNotifications, setShowHeaderNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editProfileForm, setEditProfileForm] = useState({ first_name: "", last_name: "", username: "", email: "", password: "", shift: "" });
   const [biteAnimalType, setBiteAnimalType] = useState("Dog");
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
   const [selectedHistoryPatientId, setSelectedHistoryPatientId] = useState(null);
@@ -621,7 +623,7 @@ export default function App() {
           username: fd.get("username"),
           email: fd.get("email"),
           password: fd.get("password"),
-          full_name: fd.get("fullname"),
+          full_name: `${fd.get("firstname")} ${fd.get("lastname")}`.trim(),
           shift: getCurrentShift() // Auto-assign shift on signup
         });
         setIsSignup(false);
@@ -647,6 +649,33 @@ export default function App() {
     setAdminUser(null);
     setActiveTab("census");
   }
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const payload = {
+        ...editProfileForm,
+        full_name: `${editProfileForm.first_name} ${editProfileForm.last_name}`.trim()
+      };
+      delete payload.first_name;
+      delete payload.last_name;
+
+      const data = await updateNurseProfile(adminUser.id, payload);
+      setAdminUser(data.user);
+      // Update local storage too via API helper
+      const auth = JSON.parse(localStorage.getItem("immunoroster_admin_auth") || "{}");
+      auth.user = data.user;
+      localStorage.setItem("immunoroster_admin_auth", JSON.stringify(auth));
+      
+      setIsEditingProfile(false);
+      setToast({ type: "success", message: "Profile updated successfully!" });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Patient Handlers
   async function savePatient(e) {
@@ -1371,9 +1400,15 @@ export default function App() {
           {error && <div className="error-toast">{error}</div>}
           <form className="login-form" onSubmit={handleLogin}>
             {isSignup && (
-              <div className="input-group">
-                <label>Full Name</label>
-                <input name="fullname" placeholder="Nurse Name" required />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="input-group">
+                  <label>First Name</label>
+                  <input name="firstname" placeholder="First Name" required />
+                </div>
+                <div className="input-group">
+                  <label>Last Name</label>
+                  <input name="lastname" placeholder="Last Name" required />
+                </div>
               </div>
             )}
             {isSignup && (
@@ -1527,6 +1562,27 @@ export default function App() {
                     </span>
                   </div>
                   <hr style={{ margin: '0.5rem 0', border: 'none', borderTop: '1px solid var(--border)' }} />
+                  <button 
+                    className="secondary" 
+                    style={{ width: '100%', justifyContent: 'center', border: 'none', marginBottom: '0.5rem' }} 
+                    onClick={() => {
+                      const nameParts = (adminUser.full_name || "").split(" ");
+                      const firstName = nameParts[0] || "";
+                      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+                      setEditProfileForm({
+                        first_name: firstName,
+                        last_name: lastName,
+                        username: adminUser.username || "",
+                        email: adminUser.email,
+                        password: "",
+                        shift: adminUser.shift
+                      });
+                      setIsEditingProfile(true);
+                      setShowProfileMenu(false);
+                    }}
+                  >
+                    ✏️ Edit Profile
+                  </button>
                   <button className="secondary" style={{ width: '100%', justifyContent: 'center', border: 'none' }} onClick={handleLogout}>
                     🚪 Sign Out
                   </button>
@@ -3188,6 +3244,68 @@ export default function App() {
                 {sendingReminders ? "Sending..." : (alreadySentRemindersToday ? "Already sent today" : "Send reminders")}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {isEditingProfile && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: '450px' }}>
+            <div className="modal-header">
+              <h3>Edit Nurse Profile</h3>
+              <button className="close-btn" onClick={() => setIsEditingProfile(false)}>✕</button>
+            </div>
+            <form className="modal-body" onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="input-group">
+                  <label>First Name</label>
+                  <input 
+                    value={editProfileForm.first_name} 
+                    onChange={(e) => setEditProfileForm({ ...editProfileForm, first_name: e.target.value })} 
+                    required 
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Last Name</label>
+                  <input 
+                    value={editProfileForm.last_name} 
+                    onChange={(e) => setEditProfileForm({ ...editProfileForm, last_name: e.target.value })} 
+                    required 
+                  />
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Username</label>
+                <input 
+                  value={editProfileForm.username} 
+                  onChange={(e) => setEditProfileForm({ ...editProfileForm, username: e.target.value })} 
+                  required 
+                />
+              </div>
+              <div className="input-group">
+                <label>Email Address</label>
+                <input 
+                  type="email" 
+                  value={editProfileForm.email} 
+                  onChange={(e) => setEditProfileForm({ ...editProfileForm, email: e.target.value })} 
+                  required 
+                />
+              </div>
+              <div className="input-group">
+                <label>New Password (leave blank to keep current)</label>
+                <input 
+                  type="password" 
+                  value={editProfileForm.password} 
+                  onChange={(e) => setEditProfileForm({ ...editProfileForm, password: e.target.value })} 
+                  placeholder="••••••••" 
+                />
+              </div>
+              <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                <button type="button" className="secondary" onClick={() => setIsEditingProfile(false)}>Cancel</button>
+                <button type="submit" className="primary" disabled={loading}>
+                  {loading ? "Saving..." : "Update Profile"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

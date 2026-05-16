@@ -3,6 +3,7 @@ import express from "express";
 import adminLoginHandler from "./api/auth/admin-login.js";
 import refreshHandler from "./api/auth/refresh.js";
 import registerHandler from "./api/auth/register.js";
+import updateHandler from "./api/auth/update.js";
 import healthHandler from "./api/health.js";
 import patientsHandler from "./api/patients.js";
 import providersHandler from "./api/providers.js";
@@ -29,6 +30,7 @@ function mountApiRoute(path, handler) {
 
 mountApiRoute("/api/auth/admin-login", adminLoginHandler);
 mountApiRoute("/api/auth/register", registerHandler);
+mountApiRoute("/api/auth/update", updateHandler);
 mountApiRoute("/api/auth/refresh", refreshHandler);
 mountApiRoute("/api/health", healthHandler);
 mountApiRoute("/api/patients", patientsHandler);

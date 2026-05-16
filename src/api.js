@@ -225,4 +225,9 @@ export async function registerNurse(data) {
 export async function getCensus() {
   return request("/api/census");
 }
-
+export async function updateNurseProfile(userId, data) {
+  return request(`/api/auth/update?id=${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data)
+  });
+}
