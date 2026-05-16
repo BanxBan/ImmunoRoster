@@ -83,7 +83,7 @@ header h1 {
 .header-actions {
   align-items: center;
   display: flex;
-  gap: 0.75rem;
+  gap: 1.25rem;
 }
 
 .notif-wrap {
@@ -237,7 +237,165 @@ header h1 {
   display: flex !important;
   gap: 1rem;
   align-items: center;
+}
+
+.nurse-profile-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.3rem 0 0.6rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  height: 40px;
+}
+
+.nurse-profile-mini:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.shift-indicator {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: white;
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.1);
+}
+
+.shift-indicator.shift-am {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+}
+
+.shift-indicator.shift-pm {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.3);
+}
+
+.shift-indicator.shift-night {
+  background: linear-gradient(135deg, #818cf8, #4f46e5);
+  box-shadow: 0 0 10px rgba(129, 140, 248, 0.3);
+}
+
+.nurse-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 0.8rem;
+  border: 2px solid white;
+}
+
+.header-greeting {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.user-name-hero {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--text), var(--text-muted));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 850px) {
+  .header-greeting {
+    position: static;
+    transform: none;
+    margin: 0.5rem 0;
+    width: 100%;
+    text-align: center;
+  }
+}
+
+.profile-dropdown {
+  padding: 0;
+  width: 240px;
+}
+
+.profile-menu-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+}
+
+.profile-menu-info .nurse-shift-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.nurse-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.nurse-shift-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+}
+
+.nurse-shift-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.nurse-shift-badge {
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.shift-am {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.shift-pm {
+  background: #f0f9ff;
+  color: #075985;
+  border: 1px solid #bae6fd;
+}
+
+.shift-night {
+  background: #f5f3ff;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
 }
 
 .nav-tabs {

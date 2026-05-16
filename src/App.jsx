@@ -451,6 +451,7 @@ export default function App() {
   const [showEpiDetails, setShowEpiDetails] = useState(false);
   const [showActiveBiteAlert, setShowActiveBiteAlert] = useState(false);
   const [showHeaderNotifications, setShowHeaderNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [biteAnimalType, setBiteAnimalType] = useState("Dog");
   const [selectedBarangayFilter, setSelectedBarangayFilter] = useState("all");
   const [selectedHistoryPatientId, setSelectedHistoryPatientId] = useState(null);
@@ -516,6 +517,18 @@ export default function App() {
     const t = setTimeout(() => setToast(null), 4500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.notif-wrap')) {
+        setShowProfileMenu(false);
+        setShowHeaderNotifications(false);
+        setShowSendReminders(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     setShowBiteDetails(false);
@@ -1404,9 +1417,8 @@ export default function App() {
       <header className="app-header">
         <div className="header-main">
           <h1>🛡️ ImmunoRoster</h1>
-          <div className="user-badge" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span className="user-name" style={{ fontWeight: 700 }}>Hi, Nurse {adminUser.full_name}! Welcome</span>
-            <span className="badge badge-pending" style={{ padding: '0.2rem 0.6rem' }}>{adminUser.shift} Shift</span>
+          <div className="header-greeting">
+            <span className="user-name-hero">Hi, Nurse {adminUser.full_name?.split(' ')[0] || 'Staff'}! 👋</span>
           </div>
         </div>
         <div className="header-actions">
@@ -1450,8 +1462,78 @@ export default function App() {
               <span className="notif-icon">📩</span>
               {dueTodayPatients.length > 0 && <span className="notif-count">{dueTodayPatients.length}</span>}
             </button>
+            {showSendReminders && (
+              <div className="notif-dropdown">
+                <div className="notif-head">
+                  <strong>Send Reminders</strong>
+                  <span>{dueTodayPatients.length} patient(s) due</span>
+                </div>
+                <div className="notif-list">
+                   {dueTodayPatients.map(p => (
+                     <div key={p.patient_id} className="notif-item">
+                        <div>
+                          <div className="notif-title">{p.name}</div>
+                          <div className="notif-sub">{p.items.length} dose(s) due • {p.contact_number || "No number"}</div>
+                        </div>
+                     </div>
+                   ))}
+                   {dueTodayPatients.length === 0 && <div className="notif-empty">No patients due for reminders today.</div>}
+                </div>
+                <div style={{ padding: '0.8rem', borderTop: '1px solid var(--border)' }}>
+                   <button 
+                     className="primary" 
+                     style={{ width: '100%' }} 
+                     onClick={handleSendReminders}
+                     disabled={sendingReminders || alreadySentRemindersToday || dueTodayPatients.length === 0}
+                   >
+                     {sendingReminders ? "Sending..." : alreadySentRemindersToday ? "Reminders Sent Today" : "Send Automated SMS Reminders"}
+                   </button>
+                </div>
+              </div>
+            )}
           </div>
-          <button className="secondary" style={{ padding: '0.4rem 1rem' }} onClick={handleLogout}>Sign Out</button>
+          <div className="notif-wrap">
+            <button 
+              type="button" 
+              className="nurse-profile-mini" 
+              onClick={() => {
+                setShowProfileMenu(!showProfileMenu);
+                setShowHeaderNotifications(false);
+                setShowSendReminders(false);
+              }}
+              aria-label="User menu"
+            >
+              <div className={`shift-indicator shift-${adminUser.shift?.toLowerCase() || 'am'}`} title={`${adminUser.shift} Shift`}>
+                {adminUser.shift?.charAt(0) || 'A'}
+              </div>
+              <div className="nurse-avatar">
+                {adminUser.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "RN"}
+              </div>
+            </button>
+
+            {showProfileMenu && (
+              <div className="notif-dropdown profile-dropdown">
+                <div className="notif-head">
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <strong>Nurse {adminUser.full_name}</strong>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{adminUser.email}</span>
+                  </div>
+                </div>
+                <div className="notif-list" style={{ padding: '0.5rem' }}>
+                  <div className="profile-menu-info">
+                    <span className="nurse-shift-label">Current Duty</span>
+                    <span className={`badge shift-${adminUser.shift?.toLowerCase() || 'am'}`} style={{ padding: '0.2rem 0.5rem' }}>
+                      {adminUser.shift} Shift
+                    </span>
+                  </div>
+                  <hr style={{ margin: '0.5rem 0', border: 'none', borderTop: '1px solid var(--border)' }} />
+                  <button className="secondary" style={{ width: '100%', justifyContent: 'center', border: 'none' }} onClick={handleLogout}>
+                    🚪 Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
