@@ -187,6 +187,37 @@ const ADULT_CONSENT_STATEMENT =
   "I voluntarily consent to medical treatment for EPI or Animal Bite management and authorize the electronic logging of my health data in the immunization Registry for community surveillance and continuity of care. By checking this box, I confirm that I am providing this authorization freely, officially notifying the attending nurse of my informed consent to proceed with both clinical treatment and digital documentaion.";
 const GUARDIAN_CONSENT_STATEMENT =
   "I am the parent/guardian and I voluntarily consent to medical treatment for EPI or Animal Bite management for this patient and authorize the electronic logging of this patient's health data in the immunization Registry for community surveillance and continuity of care. By checking this box, I confirm that I am providing this authorization freely, officially notifying the attending nurse of my informed consent to proceed with both clinical treatment and digital documentaion.";
+
+const normalizeBarangayName = (value) => {
+  const normalized = String(value || "Unknown").trim().toLowerCase();
+  return normalized || "unknown";
+};
+
+const getBarangayDisplayScore = (value) => {
+  const name = String(value || "").trim();
+  if (!name) return 0;
+  const hasUpper = /[A-Z]/.test(name);
+  const hasLower = /[a-z]/.test(name);
+  if (hasUpper && hasLower) return 3;
+  if (hasUpper) return 2;
+  return 1;
+};
+
+const buildBarangayOptionMap = (records = []) => {
+  return records.reduce((acc, value) => {
+    const name = String(value || "").trim();
+    if (!name) return acc;
+
+    const key = normalizeBarangayName(name);
+    const score = getBarangayDisplayScore(name);
+    const existing = acc.get(key);
+    if (!existing || score > existing.score) {
+      acc.set(key, { key, label: name, score });
+    }
+    return acc;
+  }, new Map());
+};
+
 const EPI_ROUTE_BY_VACCINE_KEY = {
   "hep-b": "IM",
   "bcg": "ID",
@@ -899,15 +930,38 @@ export default function App() {
   }
 
   // Census Calculations
+  const censusBarangayOptions = useMemo(() => {
+    const optionMap = buildBarangayOptionMap([
+      ...(globalStats.community || []).map(c => c.barangay),
+      ...(globalStats.patients || []).map(p => p.barangay)
+    ]);
+
+    return [...optionMap.values()]
+      .map(({ key, label }) => ({ key, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [globalStats]);
+
+  const barangayLabelByKey = useMemo(() => {
+    return censusBarangayOptions.reduce((acc, barangay) => {
+      acc[barangay.key] = barangay.label;
+      return acc;
+    }, {});
+  }, [censusBarangayOptions]);
+
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const { patients: gPatients = [], immunizations: gImms = [], animalBites: gBites = [], community: gComm = [] } = globalStats;
+    const communityPopulationByBarangay = gComm.reduce((acc, entry) => {
+      const key = normalizeBarangayName(entry.barangay);
+      if (!acc.has(key)) acc.set(key, Number(entry.total_population || 0));
+      return acc;
+    }, new Map());
     const scopedPatients = selectedBarangayFilter === "all"
       ? gPatients
-      : gPatients.filter(p => (p.barangay || "Unknown") === selectedBarangayFilter);
+      : gPatients.filter(p => normalizeBarangayName(p.barangay) === selectedBarangayFilter);
     const scopedPopulation = selectedBarangayFilter === "all"
-      ? gComm.reduce((sum, entry) => sum + Number(entry.total_population || 0), 0)
-      : (gComm.find(entry => entry.barangay === selectedBarangayFilter)?.total_population || 0);
+      ? [...communityPopulationByBarangay.values()].reduce((sum, population) => sum + population, 0)
+      : (communityPopulationByBarangay.get(selectedBarangayFilter) || 0);
     const scopedPatientIds = new Set(scopedPatients.map(p => p.id));
     const scopedImms = gImms.filter(imm => scopedPatientIds.has(imm.patient_id));
     const scopedBites = gBites.filter(bite => scopedPatientIds.has(bite.patient_id));
@@ -997,31 +1051,31 @@ export default function App() {
 
     // Group stats by Barangay
     const barangayStats = scopedPatients.reduce((acc, p) => {
-      const b = p.barangay || "Unknown";
-      if (!acc[b]) {
-        const communityData = gComm.find(c => c.barangay === b);
-        acc[b] = {
+      const barangayKey = normalizeBarangayName(p.barangay);
+      const barangayLabel = barangayLabelByKey[barangayKey] || p.barangay || "Unknown";
+      if (!acc[barangayLabel]) {
+        acc[barangayLabel] = {
           count: 0,
           fullyImmunized: 0,
           totalDoses: 0,
           completedDoses: 0,
-          population: communityData?.total_population || 0
+          population: communityPopulationByBarangay.get(barangayKey) || 0
         };
       }
-      acc[b].count++;
+      acc[barangayLabel].count++;
 
       const pImms = scopedImms.filter(i => i.patient_id === p.id && getEpiVaccineKey(i));
-      acc[b].totalDoses += pImms.length;
-      acc[b].completedDoses += pImms.filter(i => i.status === 'completed').length;
+      acc[barangayLabel].totalDoses += pImms.length;
+      acc[barangayLabel].completedDoses += pImms.filter(i => i.status === 'completed').length;
 
       const isFull = pImms.length > 0 && pImms.every(i => i.status === 'completed');
-      if (isFull) acc[b].fullyImmunized++;
+      if (isFull) acc[barangayLabel].fullyImmunized++;
 
       return acc;
     }, {});
 
     return {
-      filterLabel: selectedBarangayFilter === "all" ? "Overall" : selectedBarangayFilter,
+      filterLabel: selectedBarangayFilter === "all" ? "Overall" : barangayLabelByKey[selectedBarangayFilter] || selectedBarangayFilter,
       totalPatients: scopedPatients.length,
       totalAnimalBiteCases: scopedBites.length,
       scopedPopulation,
@@ -1041,18 +1095,11 @@ export default function App() {
       dueToday: scopedImms.filter(i => i.scheduled_date === today && i.status !== 'completed').length,
       barangayStats
     };
-  }, [globalStats, selectedBarangayFilter]);
+  }, [globalStats, selectedBarangayFilter, barangayLabelByKey]);
 
-  const censusBarangays = useMemo(() => {
-    const names = [
-      ...(globalStats.community || []).map(c => c.barangay),
-      ...(globalStats.patients || []).map(p => p.barangay)
-    ].filter(Boolean);
-    return [...new Set(names)];
-  }, [globalStats]);
-  const censusBarangayScope = censusBarangays.length === 1 ? `Barangay ${censusBarangays[0]}` : "all barangays";
+  const censusBarangayScope = censusBarangayOptions.length === 1 ? `Barangay ${censusBarangayOptions[0].label}` : "all barangays";
   const overallEpiRate = Math.round((stats.completedEpiRecordedDoses / (stats.totalEpiRecordedDoses || 1)) * 100);
-  const barangayFilterOptions = ["all", ...censusBarangays.sort()];
+  const barangayFilterOptions = [{ key: "all", label: "Overall" }, ...censusBarangayOptions];
   const patientById = useMemo(() => {
     return (globalStats.patients || []).reduce((acc, patient) => {
       acc[patient.id] = patient;
@@ -1064,7 +1111,7 @@ export default function App() {
       .filter(bite => bite.treatment_status !== 'completed')
       .filter(bite => {
         if (selectedBarangayFilter === "all") return true;
-        return (patientById[bite.patient_id]?.barangay || "Unknown") === selectedBarangayFilter;
+        return normalizeBarangayName(patientById[bite.patient_id]?.barangay) === selectedBarangayFilter;
       })
       .slice(0, 5);
   }, [globalStats.animalBites, patientById, selectedBarangayFilter]);
@@ -1663,11 +1710,11 @@ export default function App() {
             {barangayFilterOptions.map(barangay => (
               <button
                 type="button"
-                key={barangay}
-                className={`filter-chip ${selectedBarangayFilter === barangay ? 'active' : ''}`}
-                onClick={() => setSelectedBarangayFilter(barangay)}
+                key={barangay.key}
+                className={`filter-chip ${selectedBarangayFilter === barangay.key ? 'active' : ''}`}
+                onClick={() => setSelectedBarangayFilter(barangay.key)}
               >
-                {barangay === "all" ? "Overall" : barangay}
+                {barangay.label}
               </button>
             ))}
           </div>
