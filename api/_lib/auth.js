@@ -65,7 +65,7 @@ export async function authenticateAdminLogin(identifier, password) {
 
   const { data, error } = await supabaseAdmin
     .from("admin_users")
-    .select("id, email, full_name, password_hash, is_active")
+    .select("id, username, email, full_name, role, shift, password_hash, is_active")
     .eq("email", identifierAsEmail)
     .maybeSingle();
 
@@ -77,9 +77,11 @@ export async function authenticateAdminLogin(identifier, password) {
 
   return {
     id: data.id,
+    username: data.username,
     email: data.email,
     full_name: data.full_name,
-    role: "admin"
+    role: data.role || "admin",
+    shift: data.shift
   };
 }
 

@@ -7,7 +7,8 @@ const updateSchema = z.object({
   username: z.string().min(3).optional(),
   email: z.string().email().optional(),
   password: z.string().min(6).optional(),
-  full_name: z.string().min(1).optional()
+  full_name: z.string().min(1).optional(),
+  shift: z.enum(["AM", "PM", "Night"]).optional()
 }).strict();
 
 export default async function handler(req, res) {

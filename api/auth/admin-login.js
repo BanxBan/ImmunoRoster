@@ -33,6 +33,7 @@ export default async function handler(req, res) {
       refresh_token: refreshToken,
       user: {
         id: admin.id,
+        username: admin.username,
         email: admin.email,
         full_name: admin.full_name,
         role: admin.role,

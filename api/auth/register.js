@@ -50,6 +50,7 @@ export default async function handler(req, res) {
       message: "Nurse account created successfully",
       user: {
         id: data.id,
+        username: data.username,
         email: data.email,
         full_name: data.full_name,
         role: data.role,

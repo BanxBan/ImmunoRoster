@@ -226,8 +226,15 @@ export async function getCensus() {
   return request("/api/census");
 }
 export async function updateNurseProfile(userId, data) {
+  const payload = {
+    ...(data.full_name ? { full_name: data.full_name } : {}),
+    ...(data.username ? { username: data.username } : {}),
+    ...(data.email ? { email: data.email } : {}),
+    ...(data.password ? { password: data.password } : {})
+  };
+
   return request(`/api/auth/update?id=${userId}`, {
     method: "PATCH",
-    body: JSON.stringify(data)
+    body: JSON.stringify(payload)
   });
 }

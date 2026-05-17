@@ -17,6 +17,7 @@ import {
   deleteAnimalBite,
   getCommunityData,
   registerNurse,
+  updateNurseProfile,
   getCensus
 } from "./api";
 
@@ -654,12 +655,15 @@ export default function App() {
     e.preventDefault();
     setLoading(true);
     try {
+      const username = editProfileForm.username.trim();
+      const password = editProfileForm.password.trim();
       const payload = {
-        ...editProfileForm,
-        full_name: `${editProfileForm.first_name} ${editProfileForm.last_name}`.trim()
+        email: editProfileForm.email.trim(),
+        full_name: `${editProfileForm.first_name.trim()} ${editProfileForm.last_name.trim()}`.trim()
       };
-      delete payload.first_name;
-      delete payload.last_name;
+
+      if (username) payload.username = username;
+      if (password) payload.password = password;
 
       const data = await updateNurseProfile(adminUser.id, payload);
       setAdminUser(data.user);
@@ -3270,7 +3274,6 @@ export default function App() {
                 <input 
                   value={editProfileForm.username} 
                   onChange={(e) => setEditProfileForm({ ...editProfileForm, username: e.target.value })} 
-                  required 
                 />
               </div>
               <div className="input-group">
