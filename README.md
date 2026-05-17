@@ -1,5 +1,8 @@
 # ImmunoRoster
 
+<img width="1917" height="932" alt="image" src="https://github.com/user-attachments/assets/22576dd5-7e0c-4ea8-badd-ac8c959c6196" />
+
+
 Monorepo setup for production deployment:
 
 - frontend: React + Vite app (deploy to Vercel)
