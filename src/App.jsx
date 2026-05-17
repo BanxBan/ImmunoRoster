@@ -3245,13 +3245,32 @@ export default function App() {
       )}
       {isEditingProfile && (
         <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: '450px' }}>
-            <div className="modal-header">
-              <h3>Edit Nurse Profile</h3>
-              <button className="close-btn" onClick={() => setIsEditingProfile(false)}>✕</button>
+          <div className="modal-card profile-edit-modal">
+            <div className="modal-header profile-edit-header">
+              <div className="profile-edit-title-wrap">
+                <div className="profile-edit-avatar">
+                  {editProfileForm.first_name?.[0] || adminUser.full_name?.[0] || "N"}
+                </div>
+                <div>
+                  <h3>Edit Nurse Profile</h3>
+                  <span>{adminUser.email}</span>
+                </div>
+              </div>
+              <button type="button" className="close-btn" onClick={() => setIsEditingProfile(false)} aria-label="Close profile editor">✕</button>
             </div>
-            <form className="modal-body" onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+
+            <form className="profile-edit-form" onSubmit={handleUpdateProfile}>
+              <div className="profile-edit-summary">
+                <div>
+                  <span className="profile-edit-kicker">Current Duty</span>
+                  <strong>{adminUser.shift || "AM"} Shift</strong>
+                </div>
+                <span className={`profile-edit-shift shift-${adminUser.shift?.toLowerCase() || "am"}`}>
+                  {adminUser.shift || "AM"}
+                </span>
+              </div>
+
+              <div className="profile-edit-grid">
                 <div className="input-group">
                   <label>First Name</label>
                   <input 
@@ -3269,14 +3288,16 @@ export default function App() {
                   />
                 </div>
               </div>
-              <div className="input-group">
+
+              <div className="input-group profile-edit-wide">
                 <label>Username</label>
                 <input 
                   value={editProfileForm.username} 
                   onChange={(e) => setEditProfileForm({ ...editProfileForm, username: e.target.value })} 
                 />
               </div>
-              <div className="input-group">
+
+              <div className="input-group profile-edit-wide">
                 <label>Email Address</label>
                 <input 
                   type="email" 
@@ -3285,7 +3306,8 @@ export default function App() {
                   required 
                 />
               </div>
-              <div className="input-group">
+
+              <div className="input-group profile-edit-wide">
                 <label>New Password (leave blank to keep current)</label>
                 <input 
                   type="password" 
@@ -3294,7 +3316,8 @@ export default function App() {
                   placeholder="••••••••" 
                 />
               </div>
-              <div className="modal-actions" style={{ marginTop: '1rem' }}>
+
+              <div className="modal-actions profile-edit-actions">
                 <button type="button" className="secondary" onClick={() => setIsEditingProfile(false)}>Cancel</button>
                 <button type="submit" className="primary" disabled={loading}>
                   {loading ? "Saving..." : "Update Profile"}
