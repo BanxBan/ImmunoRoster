@@ -1666,44 +1666,8 @@ export default function App() {
 
       {activeTab === 'census' && (
         <section className="census-modern">
-          <div className="census-header-grid">
-            <div className="active-alert">
-              <button
-                type="button"
-                className="active-alert-trigger"
-                onClick={() => setShowActiveBiteAlert(!showActiveBiteAlert)}
-              >
-                <div className="active-alert-main">
-                  <span className="active-alert-icon">AB</span>
-                  <div>
-                    <strong>Active Bite Cases</strong>
-                    <span>{stats.filterLabel} • {stats.activeBiteCases} pending treatment{stats.activeBiteCases === 1 ? "" : "s"}</span>
-                  </div>
-                </div>
-                <span className="active-alert-count">{stats.activeBiteCaseRate}%</span>
-              </button>
-
-              {showActiveBiteAlert && (
-                <ul className="active-alert-list">
-                  {activeBiteAlerts.map(bite => (
-                    <li key={bite.id} className="active-alert-item">
-                      <div className="data-main">
-                        <span className="data-title">{patientById[bite.patient_id]?.full_name || 'Loading...'}</span>
-                        <span className="data-sub">{bite.animal_type} bite • Status: {bite.treatment_status}</span>
-                      </div>
-                      <span className={`badge badge-${bite.treatment_status}`}>{bite.treatment_status}</span>
-                    </li>
-                  ))}
-                  {activeBiteAlerts.length === 0 && (
-                    <li className="active-alert-empty">No active bite cases for this filter.</li>
-                  )}
-                </ul>
-              )}
-            </div>
-
-            <div className="census-intro">
-              This section presents the barangay trends and cumulative reported cases of selected vaccine-preventable diseases (VPDs) and animal bite incidents in {censusBarangayScope} up to the year {new Date().getFullYear()}.
-            </div>
+          <div className="census-intro" style={{ maxWidth: '800px', margin: '0 auto 1.5rem', textAlign: 'center', justifyContent: 'center' }}>
+            This section presents the barangay trends and cumulative reported cases of selected vaccine-preventable diseases (VPDs) and animal bite incidents in {censusBarangayScope} up to the year {new Date().getFullYear()}.
           </div>
 
           <div className="barangay-filter-bar">
@@ -1727,11 +1691,11 @@ export default function App() {
             >
               <div className="metric-icon bite-icon">AB</div>
               <div className="metric-content">
-                <span className="stat-value">{stats.totalAnimalBiteCases}</span>
-                <span className="stat-label">Overall Animal Bite Cases</span>
+                <span className="stat-value" style={{ color: '#166534' }}>{stats.animalBiteTreatmentRate}%</span>
+                <span className="stat-label">Overall Animal Bite Treatment Rate</span>
                 <span className="metric-subvalue">{stats.filterLabel}</span>
                 <span className="metric-subvalue">
-                  {stats.animalBiteIncidencePer1000} per 1,000 population
+                  {stats.completedBiteCases} out of {stats.totalAnimalBiteCases} recorded treatment completed
                 </span>
               </div>
             </button>
@@ -1926,60 +1890,8 @@ export default function App() {
             </div>
           )}
 
-          <div className="dashboard-grid">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div className="card census-ring-card" style={{ textAlign: 'center', margin: 0 }}>
-                <h2>💉 Overall EPI Rate</h2>
-                <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
-                  <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                    <circle
-                      cx="18" cy="18" r="16" fill="none" stroke="var(--primary)" strokeWidth="3"
-                      strokeDasharray={`${overallEpiRate} 100`}
-                    />
-                  </svg>
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{overallEpiRate}%</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>COMPLETED</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', fontSize: '0.8rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <div style={{ width: '12px', height: '12px', background: 'var(--primary)', borderRadius: '2px' }}></div> Completed
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <div style={{ width: '12px', height: '12px', background: '#e2e8f0', borderRadius: '2px' }}></div> Pending
-                  </div>
-                </div>
-              </div>
-
-              <div className="card census-ring-card census-ring-card-bite" style={{ textAlign: 'center', margin: 0 }}>
-                <h2>🐕 Bite Treatment Rate</h2>
-                <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2rem 0' }}>
-                  <svg viewBox="0 0 36 36" style={{ width: '180px', height: '180px', transform: 'rotate(-90deg)' }}>
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="#fee2e2" strokeWidth="3" />
-                    <circle
-                      cx="18" cy="18" r="16" fill="none" stroke="#dc2626" strokeWidth="3"
-                      strokeDasharray={`${stats.animalBiteTreatmentRate} 100`}
-                    />
-                  </svg>
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.animalBiteTreatmentRate}%</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>TREATED</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', fontSize: '0.8rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <div style={{ width: '12px', height: '12px', background: '#dc2626', borderRadius: '2px' }}></div> Treated
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <div style={{ width: '12px', height: '12px', background: '#fee2e2', borderRadius: '2px' }}></div> Pending
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="card">
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="card" style={{ margin: 0 }}>
               <h2>🏘️ Barangay Statistics</h2>
               <div className="barangay-summary">
                 <div className="summary-card summary-card-patients">
@@ -2759,7 +2671,7 @@ export default function App() {
               <h2>Clinical Registries (Active Cases)</h2>
               <span>Grouped into Animal Bite and EPI with Status and Hx sections</span>
             </div>
-            <div className="dashboard-grid">
+            <div className="balanced-grid">
               <div className="card registry-card registry-card-bite">
                 <h2>🐕 Animal Bite</h2>
                 <div className="registry-group-header">
@@ -2786,12 +2698,30 @@ export default function App() {
                       <div className="registry-row-actions">
                         <span className={`badge badge-${b.treatment_status}`}>{b.treatment_status}</span>
                         {b.next_due_dose ? (
-                          <button
-                            className="primary registry-action-btn"
-                            onClick={() => markBiteDoseDone(b.id, b.next_due_dose.id)}
-                          >
-                            Mark Dose {b.next_due_dose.dose_number} Done
-                          </button>
+                          <>
+                            <button
+                              className="primary registry-action-btn"
+                              onClick={() => markBiteDoseDone(b.id, b.next_due_dose.id)}
+                            >
+                              Mark Dose {b.next_due_dose.dose_number} Done
+                            </button>
+                            <button
+                              className="secondary registry-action-btn action-btn-danger"
+                              onClick={() => {
+                                openConfirmDialog({
+                                  title: "Cancel dose?",
+                                  message: "This will permanently cancel and remove this scheduled dose.",
+                                  confirmText: "Cancel Dose",
+                                  onConfirm: async () => {
+                                    await deleteImmunization(b.next_due_dose.id);
+                                    loadAllData();
+                                  }
+                                });
+                              }}
+                            >
+                              Cancel dose
+                            </button>
+                          </>
                         ) : (
                           b.treatment_status !== 'completed' && (
                             <button
@@ -2902,9 +2832,9 @@ export default function App() {
                             className="secondary registry-action-btn action-btn-danger"
                             onClick={() => {
                               openConfirmDialog({
-                                title: "Delete immunization record?",
-                                message: "This will permanently remove this immunization record.",
-                                confirmText: "Delete",
+                                title: "Cancel dose?",
+                                message: "This will permanently cancel and remove this scheduled dose.",
+                                confirmText: "Cancel Dose",
                                 onConfirm: async () => {
                                   await deleteImmunization(imm.id);
                                   loadAllData();
@@ -2912,7 +2842,7 @@ export default function App() {
                               });
                             }}
                           >
-                            Delete
+                            Cancel dose
                           </button>
                         </div>
                       </div>
@@ -3141,7 +3071,7 @@ export default function App() {
                                                 const isDone = imm?.status === 'completed';
                                                 const doneTime = imm?.notes?.match(/\[Done at (.*?)\]/)?.[1];
                                                 return (
-                                                  <td key={`sch-${bite.id}-${label}`} className={`vc-date-cell ${isDone ? 'vc-date-done' : ''}`}>
+                                                  <td key={`sch-${bite.id}-${label}`} className={`vc-date-cell ${isDone ? 'vc-date-done' : 'vc-date-pending'}`}>
                                                     <div>{dt || "—"}</div>
                                                     {isDone && (
                                                       <div style={{ fontSize: '0.65rem', fontWeight: 700, marginTop: '2px', color: '#059669' }}>

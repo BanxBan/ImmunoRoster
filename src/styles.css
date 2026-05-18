@@ -1438,6 +1438,12 @@ button.secondary:hover {
   grid-template-columns: 1fr 2fr;
 }
 
+.balanced-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr 1fr;
+}
+
 .census-modern .census-intro {
   background: linear-gradient(120deg, #eef4ff 0%, #f8fbff 100%);
   border: 1px solid #d8e5ff;
@@ -1667,8 +1673,8 @@ button.secondary:hover {
 }
 
 .vc-date-pending {
-  background: #fef9c3 !important;
-  color: #92400e;
+  background: #ffedd5 !important;
+  color: #c2410c;
   font-weight: 700;
 }
 
@@ -2328,6 +2334,10 @@ video {
   }
 
   .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .balanced-grid {
     grid-template-columns: 1fr;
   }
 
