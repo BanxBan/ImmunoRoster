@@ -1993,7 +1993,7 @@ export default function App() {
                     onClick={() => setLogType('epi')}
                   >
                     <span className="activity-choice-icon">EPI</span>
-                    <span className="activity-choice-text">EPI Immunization</span>
+                    <span className="activity-choice-text">EPI Log</span>
                   </button>
                 </div>
                 {logType !== 'bite' && logType !== 'epi' && (
